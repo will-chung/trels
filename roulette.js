@@ -50,12 +50,12 @@ class Wheel {
     }
 
     spinUp() {
-        this.angularVelocity += 0.01; 
+        this.angularVelocity -= 0.01; 
     }
 
     spinDown() {
-        this.angularVelocity -= 0.001;
-        if (this.angularVelocity <= 0) {
+        this.angularVelocity += 0.001;
+        if (this.angularVelocity >= 0) {
             this.angularVelocity = 0;
             this.spinning = false;
         } 
@@ -65,7 +65,7 @@ class Wheel {
         this.radians += this.angularVelocity;
 
         if (this.spinning) {
-            if (this.angularVelocity <= this.maxAngVelocity && this.spinningUp) {
+            if (Math.abs(this.angularVelocity) <= this.maxAngVelocity && this.spinningUp) {
                 this.spinUp();
             } else {
                 this.spinningUp = false;
