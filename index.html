@@ -3,14 +3,45 @@
     <head>
         <meta charset="UTF-8">
         <title>Roulette Wheel</title>
-        <style>
-            body {
-                margin: 0;
-            }
-        </style>
+        <link rel="stylesheet" href="style.css">
     </head>
     <body>
-        <canvas></canvas>
-        <script src="roulette.js"></script>
+        <div id="controls">
+            <form>
+                <span>Sample Size</span>
+                <input id="sample-size" type="number">
+                <br>
+                <span>Number of Trials</span>
+                <input id="num-trials" type="number">
+                <br>
+                <button>Collect Data</button>
+                <button>Clear Data</button>
+            </form>
+        </div>
+        <div id="statistics">
+            <span id="count">Count: 0</span>
+            <br>
+            <span id="expected-mean">Expected Mean: 0</span>
+            <br>
+            <span id="expected-variance">Expected Variance: 0</span>
+            <br>
+            <span id="sample-mean">Sample Mean: 0</span>
+            <br>
+            <span id="sample-variance">Sample Variance: 0</span>
+            <br>
+            <span id="maximum-value">Maximum Value: 0</span>
+            <br>
+            <span id="minimum-value">Minimum Value: 0</span>
+        </div>
+        <div id="region-controls">
+            <span id="probability">Probability: 0</span>
+        </div>
+        <div id="roulette-wheel">
+            <canvas style="border-style: solid; border-color: black;">
+            </canvas>
+            <button id="btnClockwise">Clockwise</button>
+            <button id="btnCounter">Counter-Clockwise</button>
+        </div>
+        <script type="module" src="roulette.js"></script>
     </body>
 </html>
