@@ -3,6 +3,7 @@ import { Handle } from './handle.js'
 import { Sector } from './sector.js'
 import { Data, updateData } from './data.js'
 import { ROTATION } from './tracker.js'
+import './adjuster.js'
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
@@ -126,7 +127,13 @@ class Wheel {
 
     rotate() {
         if (this.dragging) {
-            this.rotationalVelocity += ROTATION/90; 
+            // spinning clockwise
+            if (this.rotationalVelocity < 0)
+                this.rotationalVelocity += Math.abs(ROTATION)/90; 
+            // spinning counter-clockwise
+            else 
+                this.rotationalVelocity -= Math.abs(ROTATION)/90;
+
             if (Math.abs(this.rotationalVelocity - 0) < ROTATION/60) {
                 wheel.rotating = false;
                 animating = false;
@@ -227,13 +234,17 @@ class Wheel {
     }
 
     contains(x,y) {
+        let distance = this.distanceFromCenter(x,y);
+        return distance <= this.radius;
+    }
+
+    distanceFromCenter(x,y) {
         let center = {
             x: this.absoluteX,
             y: this.absoluteY,
-        };
+        }
         let distance = Math.sqrt(Math.pow(x - center.x,2) + Math.pow(y - center.y,2));
-        
-        return distance <= this.radius;
+        return distance;
     }
 
     update() {
@@ -287,14 +298,6 @@ function initializeCanvas(x, y, width, height) {
     
     c.translate(canvas.width/2, canvas.height/2);
     c.transform(1, 0, 0, -1, 0, 0);
-
-    // c.rotate((1/4)*Math.PI);
-    // c.beginPath();
-    // c.strokeStyle = 'red';
-    // c.moveTo(0,0);
-    // c.lineTo(0, canvas.height/2);
-    // c.stroke();
-    // c.closePath();
 }
 
 function initializeWheel() {
@@ -306,7 +309,8 @@ function initializeWheel() {
     initializeSectors(levels);
     
     // initialize handles
-    initializeHandles()
+    initializeHandles();
+
     data = new Data(wheel);
     updateData(data);
 
@@ -347,10 +351,10 @@ function initializeHandles() {
     let numSectors = wheel.sectors[outermostLevel].length;
     let outermostSectors = wheel.sectors[outermostLevel];
     for (let sector = 1; sector <= numSectors; sector++) {
-        let currSector = outermostSectors[sector-1]; // last sector
+        let currSector = outermostSectors[sector-1];
         let adjacentSector;
         if (sector == numSectors) {
-            adjacentSector = outermostSectors[0];    // first sector
+            adjacentSector = outermostSectors[0];      // adj to first sector
         } else {
             adjacentSector = outermostSectors[sector];
         }

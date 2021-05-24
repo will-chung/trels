@@ -19,19 +19,21 @@ class Sector {
         this.outerRadius = outerRadius;
         this.color = color;
         this.defaultColor = color;
-        this.wheel = wheel;  
-        this.arcAngle = Math.abs(endAngle - startAngle);
-        this.offset = startAngle - wheel.radians; // offset from wheel angle
-        this.probability = this.arcAngle / (2*Math.PI);
+        this.wheel = wheel;
+        this.arcAngle = Math.abs(endAngle - startAngle);  
+        this.probability = Math.abs(this.endAngle - this.startAngle) / (2*Math.PI);
     }
 
     draw() {
         let startAngle = this.startAngle + (1/2)*Math.PI;
-        let endAngle = startAngle + this.arcAngle;
+        let endAngle = this.endAngle + (1/2)*Math.PI;
 
-        if (endAngle > 2*Math.PI)
-            endAngle -= 2*Math.PI;
-
+        // ensure 0 <= angle <= 2*Math.PI
+        if (startAngle < 0) startAngle += 2*Math.PI;
+        if (startAngle > 2*Math.PI) startAngle %= 2*Math.PI;
+        if (endAngle < 0) endAngle += 2*Math.PI;
+        if (endAngle > 2*Math.PI) endAngle %= (2*Math.PI);
+        
         c.beginPath();
         c.strokeStyle = 'black';
         c.fillStyle = this.color;
@@ -60,13 +62,16 @@ class Sector {
 
     label() {
         let startAngle = this.startAngle + (1/2)*Math.PI;
-        let endAngle = startAngle + this.arcAngle;
+        let endAngle = this.endAngle + (1/2)*Math.PI;
 
-        if (endAngle > 2*Math.PI)
-            endAngle -= 2*Math.PI;
-
+        // ensure 0 <= angle <= 2*Math.PI
+        if (startAngle < 0) startAngle += 2*Math.PI;
+        if (startAngle > 2*Math.PI) startAngle %= 2*Math.PI;
+        if (endAngle < 0) endAngle += 2*Math.PI;
+        if (endAngle > 2*Math.PI) endAngle %= (2*Math.PI);
+        
         let midAngle;
-        if (this.endAngle < startAngle) {
+        if (endAngle < startAngle) {
             let startOffset = 2*Math.PI - startAngle;
             let endOffset = endAngle;
             if (startOffset >= endOffset) {
@@ -100,11 +105,14 @@ class Sector {
 
     contains(x,y) {
         let startAngle = this.startAngle + (1/2)*Math.PI;
-        let endAngle = startAngle + this.arcAngle;
+        let endAngle = this.endAngle + (1/2)*Math.PI;
 
-        if (endAngle > 2*Math.PI)
-            endAngle -= 2*Math.PI;
-
+        // ensure 0 <= angle <= 2*Math.PI
+        if (startAngle < 0) startAngle += 2*Math.PI;
+        if (startAngle > 2*Math.PI) startAngle %= 2*Math.PI;
+        if (endAngle < 0) endAngle += 2*Math.PI;
+        if (endAngle > 2*Math.PI) endAngle %= (2*Math.PI);
+        
         // absolute coordinates of wheel center
         let wheelCenter = {
             x: this.wheel.absoluteX,
@@ -152,11 +160,17 @@ class Sector {
         // TODO: draw handles?
     }
 
-    update() {
-        this.startAngle = this.wheel.radians + this.offset;
-        this.endAngle = this.startAngle + this.arcAngle;
-        this.endAngle %= 2*Math.PI;
+    adjustAngles() {
+        // ensure 0 <= angle <= 2*Math.PI
+        if (this.startAngle < 0) this.startAngle += 2*Math.PI;
+        if (this.startAngle > 2*Math.PI) this.startAngle %= 2*Math.PI;
+        if (this.endAngle < 0) this.endAngle += 2*Math.PI;
+        if (this.endAngle > 2*Math.PI) this.endAngle %= (2*Math.PI);
+    }   
 
+    update() {
+        this.adjustAngles();
+        this.probability = this.arcAngle / (2*Math.PI);
         this.draw();
         this.label();
     }

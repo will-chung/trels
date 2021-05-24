@@ -5,8 +5,13 @@ class Handle {
     constructor(sector, adjacentSector, radius) {
         this.sector = sector;
         this.adjacentSector = adjacentSector;
-        this.x = sector.wheel.radius * Math.cos(sector.endAngle);
-        this.y = sector.wheel.radius * Math.sin(sector.endAngle);
+        
+        // offset to have wheel vertical 
+        let endAngle = sector.endAngle + (1/2)*Math.PI;
+        endAngle %= 2*Math.PI;
+        this.x = sector.wheel.radius * Math.cos(endAngle);
+        this.y = sector.wheel.radius * Math.sin(endAngle);
+        
         this.radius = radius;
         this.color = sector.color;
     }
@@ -26,21 +31,32 @@ class Handle {
         c.restore();
     }
 
-    // TODO: fix
     contains(x,y) {
-        let handleCoordinates = {
-            x: canvas.x + this.x,
-            y: canvas.y + this.y,
-        };
-        let distance = Math.sqrt(Math.pow(x - handleCoordinates.x,2) + Math.pow(y - handleCoordinates.y,2));
-        
-        return distance <= this.radius;
+        const wheel = this.sector.wheel;
+        const distance = this.distanceFromCenter(x,y);
+
+        if (!wheel.contains(x,y)) {
+            return distance <= this.radius;
+        } else return false;
+    }
+
+    distanceFromCenter(x,y) {
+        const wheel = this.sector.wheel;
+        const offsetX = this.x - wheel.x;
+        const offsetY = this.y - wheel.y
+        const center = {
+            x: wheel.absoluteX + offsetX,
+            y: wheel.absoluteY - offsetY, // subtract to account for canvas reflection
+        }
+        const distance = Math.sqrt(Math.pow(x - center.x,2) + Math.pow(y - center.y,2));
+        return distance;
     }
 
     update() {
+        const endAngle = this.sector.endAngle + (1/2)*Math.PI;
         let radius = this.sector.wheel.radius;
-        this.x = this.sector.wheel.x + radius * Math.cos(this.sector.endAngle);
-        this.y = this.sector.wheel.y + radius * Math.sin(this.sector.endAngle);
+        this.x = radius * Math.cos(endAngle);
+        this.y = radius * Math.sin(endAngle);
 
         this.draw();
     }

@@ -1,27 +1,34 @@
-import { wheel, clear, acceleration, decceleration, spinUpDuration, setAnimating, animate } from './roulette.js'
+import { wheel, setAnimating, animate } from './roulette.js'
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
-const ROTATION = (1/2060)*Math.PI;
+// positive = counter-clockwise
+// negative = clockwise
+let ROTATION = (1/900)*Math.PI;
 
 window.addEventListener('mousedown', (event) => {
 
     let mouseMoveHandler;
     if (wheel.contains(event.x, event.y)) {
 
+        wheel.dragging = false;
         setAnimating(true);
         animate();
-        wheel.rotationalVelocity = -(1/2160)*Math.PI;
-        let startAngle = getAngle(event.x, event.y);
-        mouseMoveHandler = function (event) {
-            // let currAngle = getAngle(event.x, event.y);
-            // let rotationAngle = currAngle - startAngle;
-            // startAngle = currAngle;
-
+        let prevAngle = getAngle(event.x, event.y);
+        mouseMoveHandler = function(moveEvent) {
+            let currAngle = getAngle(moveEvent.x, moveEvent.y);
+            // if spinning clockwise
+            if (currAngle < prevAngle) {
+                ROTATION = -Math.abs(ROTATION);
+            // else spinning counter-clockwise
+            } else { 
+                ROTATION = Math.abs(ROTATION);
+            }
+            prevAngle = currAngle;
             wheel.rotating = true;
-            wheel.rotationalVelocity -= ROTATION/60;
-        }
+            wheel.rotationalVelocity += ROTATION/60;
+        };
 
         window.addEventListener('mousemove', mouseMoveHandler);
 
@@ -47,4 +54,4 @@ function getAngle(x,y) {
     return angle;
 }
 
-export { ROTATION };
+export { ROTATION, getAngle };
