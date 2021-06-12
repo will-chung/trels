@@ -6,25 +6,40 @@ class Handle {
         this.sector = sector;
         this.adjacentSector = adjacentSector;
         
-        // offset to have wheel vertical 
+        // offset to have roulette vertical 
         let endAngle = sector.endAngle + (1/2)*Math.PI;
         endAngle %= 2*Math.PI;
-        this.x = sector.wheel.radius * Math.cos(endAngle);
-        this.y = sector.wheel.radius * Math.sin(endAngle);
+        const rouletteRadius = sector.wheel.roulette.radius;
+        this.x = rouletteRadius * Math.cos(endAngle);
+        this.y = rouletteRadius * Math.sin(endAngle);
+
+        // maximum and minimum extension of sector
+        this.upperBound = sector.endAngle;
+        this.lowerBound = sector.startAngle;
         
         this.radius = radius;
         this.color = sector.color;
     }
 
     draw() {
+        const angle = this.sector.endAngle;
+        const radius = this.sector.wheel.roulette.radius;
 
-        let angle = this.sector.endAngle;
         c.save();
         c.rotate(angle);
 
         c.beginPath();
         c.fillStyle = this.color;
-        c.arc(0, this.sector.wheel.radius, this.radius, 0, 2*Math.PI, false);
+    
+        // if sector is fully collapsed
+        if (this.sector.arcAngle == 0) {
+            const adjustedAngle = angle + (1/2)*Math.PI;
+            c.arc(0, radius + 2*this.radius, this.radius, 0, 2*Math.PI, false);
+            this.x = (radius + 2*this.radius) * Math.cos(adjustedAngle)
+            this.y = (radius + 2*this.radius) * Math.sin(adjustedAngle)
+        }
+        else c.arc(0, radius, this.radius, 0, 2*Math.PI, false);
+
         c.fill();
         c.closePath();
 
@@ -32,21 +47,23 @@ class Handle {
     }
 
     contains(x,y) {
-        const wheel = this.sector.wheel;
+        const roulette = this.sector.wheel.roulette;
         const distance = this.distanceFromCenter(x,y);
-
-        if (!wheel.contains(x,y)) {
+        
+        if (!roulette.contains(x,y)) {
             return distance <= this.radius;
         } else return false;
     }
 
+    // distance from center of handle
     distanceFromCenter(x,y) {
-        const wheel = this.sector.wheel;
-        const offsetX = this.x - wheel.x;
-        const offsetY = this.y - wheel.y
+        const roulette = this.sector.wheel.roulette;
+        const offsetX = this.x - roulette.x;
+        const offsetY = this.y - roulette.y
         const center = {
-            x: wheel.absoluteX + offsetX,
-            y: wheel.absoluteY - offsetY, // subtract to account for canvas reflection
+            x: roulette.absoluteX + offsetX,
+            // subtract to account for canvas reflection
+            y: roulette.absoluteY - offsetY,
         }
         const distance = Math.sqrt(Math.pow(x - center.x,2) + Math.pow(y - center.y,2));
         return distance;
@@ -54,16 +71,12 @@ class Handle {
 
     update() {
         const endAngle = this.sector.endAngle + (1/2)*Math.PI;
-        let radius = this.sector.wheel.radius;
-        this.x = radius * Math.cos(endAngle);
-        this.y = radius * Math.sin(endAngle);
+        const rouletteRadius = this.sector.wheel.roulette.radius;
+        this.x = rouletteRadius * Math.cos(endAngle);
+        this.y = rouletteRadius * Math.sin(endAngle);
 
         this.draw();
     }
-}
-
-function clear() {
-    c.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 export { Handle };

@@ -4,6 +4,7 @@
         <meta charset="UTF-8">
         <title>Roulette Wheel</title>
         <link rel="stylesheet" href="./styles/style.css">
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js'></script>
     </head>
     <body>
         <div id="controls">
@@ -15,9 +16,9 @@
                 <input id="num-trials" type="number">
                 <br>
                 <button>Collect Data</button>
-                <button>Clear Data</button>
             </form>
         </div>
+        <button id="btnClear">Clear Data</button>
         <div id="statistics">
             <span id="count">Count: 0</span>
             <br>
@@ -39,9 +40,26 @@
         <div id="roulette-wheel">
             <canvas style="border-style: solid; border-color: black;">
             </canvas>
+        </div>
+        <div id="spin-buttons">
             <button id="btnClockwise">Clockwise</button>
             <button id="btnCounter">Counter-Clockwise</button>
         </div>
+        <div id="wheel-buttons">
+            <button id="btnInsert">Insert</button>
+            <button id="btnRemove">Remove</button>
+            <button id="btnRepeat">Repeat</button>
+            <br>
+            <button id="btnTotal">Total</button>
+            <button id="btnInvert">Invert</button>
+            <button id="btnSimplify">Simplify</button>
+            <br>
+            <button id="btnRandom">Random</button>
+        </div>
+        <div id="graph">
+            <canvas id="histogram" width="400" height="400" style="border: 1px solid black;"></canvas>
+        </div>
         <script type="module" src="./scripts/roulette.js"></script>
+        <!-- <script type="module" src="./scripts/script.js"></script> -->
     </body>
 </html>

@@ -1,6 +1,6 @@
 class Data {
-    constructor(wheel) {
-        this.wheel = wheel; 
+    constructor(roulette) {
+        this.roulette = roulette; 
         this.data = [];
         this.max = 0;
         this.min = 0;
@@ -16,7 +16,7 @@ class Data {
     }
 
     clear() {
-        data = []
+        this.data = [];
     }
 
     getCount() {
@@ -24,9 +24,10 @@ class Data {
     }
 
     getExpectedMean() {
+        let wheels = this.roulette.wheels;
         let mean = 0;
-        // random variable represented by outermost sectors
-        let randomVariable = this.wheel.sectors[this.wheel.sectors.length-1];
+        // random variable represented by outermost wheel
+        let randomVariable = wheels[wheels.length-1].sectors;
         
         for (let x = 0; x < randomVariable.length; x++) {
             let sector = randomVariable[x];
@@ -37,9 +38,10 @@ class Data {
     }
 
     getExpectedVariance() {
+        const wheels = this.roulette.wheels; 
         let variance = 0;
-        // random variable represented by outermost sectors
-        let randomVariable = this.wheel.sectors[this.wheel.sectors.length-1];
+        // random variable represented by outermost wheel
+        let randomVariable = wheels[wheels.length-1].sectors;
         let mean = this.getExpectedMean();
         
         for (let x = 0; x < randomVariable.length; x++) {
@@ -93,30 +95,36 @@ class Data {
     getMin() {
         return this.min;
     }
-}
 
-function updateData(data) {
-    let count = document.getElementById('count');
-    let expectedMean = document.getElementById('expected-mean');
-    let expectedVariance = document.getElementById('expected-variance');
-    let sampleMean = document.getElementById('sample-mean');
-    let sampleVariance = document.getElementById('sample-variance');
-    let maxValue = document.getElementById('maximum-value');
-    let minValue = document.getElementById('minimum-value');
-    let probability = document.getElementById('probability');
+    setProbability(probability) {
+        let probLabel = document.getElementById('probability');
 
-    count.innerHTML = "Count: " + data.getCount();
-    expectedMean.innerHTML = "Expected Mean: " + data.getExpectedMean();
-    expectedVariance.innerHTML = "Expected Variance: " + data.getExpectedVariance();
-    sampleMean.innerHTML = "Sample Mean: " + data.getSampleMean();
-    sampleVariance.innerHTML = "Sample Variance: " + data.getSampleVariance();
-    maxValue.innerHTML = "Maximum Value: " + data.getMax();
-    minValue.innerHTML = "Minimum Value: " + data.getMin();
-    if (data.wheel.selected) {
-        probability.innerHTML = "Probability: " + data.wheel.selected.probability;
+        probLabel.textContent = 'Probability: ' + probability;
     }
-    else   
-        probability.innerHTML = "Probability: 0";
+
+    update() {
+        let count = document.getElementById('count');
+        let expectedMean = document.getElementById('expected-mean');
+        let expectedVariance = document.getElementById('expected-variance');
+        let sampleMean = document.getElementById('sample-mean');
+        let sampleVariance = document.getElementById('sample-variance');
+        let maxValue = document.getElementById('maximum-value');
+        let minValue = document.getElementById('minimum-value');
+        let probability = document.getElementById('probability');
+
+        count.innerHTML = "Count: " + this.getCount();
+        expectedMean.innerHTML = "Expected Mean: " + this.getExpectedMean();
+        expectedVariance.innerHTML = "Expected Variance: " + this.getExpectedVariance();
+        sampleMean.innerHTML = "Sample Mean: " + this.getSampleMean();
+        sampleVariance.innerHTML = "Sample Variance: " + this.getSampleVariance();
+        maxValue.innerHTML = "Maximum Value: " + this.getMax();
+        minValue.innerHTML = "Minimum Value: " + this.getMin();
+        if (this.roulette.selectedSector) {
+            probability.innerHTML = "Probability: " + this.roulette.selectedSector.probability;
+        }
+        else   
+            probability.innerHTML = "Probability: 0";
+    }
 }
 
-export { Data, updateData };
+export { Data };

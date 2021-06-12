@@ -44,4 +44,4 @@ function getRadians(transform) {
     return theta;
 }
 
-export { randomValueInRange, getRadians };
+export { randomValueInRange, randomValueInArray, getRadians };

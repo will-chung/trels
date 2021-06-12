@@ -1,4 +1,4 @@
-import { wheel, setAnimating, animate } from './roulette.js'
+import { roulette, setAnimating, animate } from './roulette.js'
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
@@ -7,16 +7,17 @@ const c = canvas.getContext('2d');
 // negative = clockwise
 let ROTATION = (1/900)*Math.PI;
 
-window.addEventListener('mousedown', (event) => {
+window.addEventListener('dblclick', (event) => {
 
     let mouseMoveHandler;
-    if (wheel.contains(event.x, event.y)) {
-
-        wheel.dragging = false;
+    if (roulette.contains(event.x, event.y)) {
         setAnimating(true);
         animate();
         let prevAngle = getAngle(event.x, event.y);
         mouseMoveHandler = function(moveEvent) {
+            if (roulette.rotating == false)
+                roulette.rotating = true;
+            
             let currAngle = getAngle(moveEvent.x, moveEvent.y);
             // if spinning clockwise
             if (currAngle < prevAngle) {
@@ -26,14 +27,13 @@ window.addEventListener('mousedown', (event) => {
                 ROTATION = Math.abs(ROTATION);
             }
             prevAngle = currAngle;
-            wheel.rotating = true;
-            wheel.rotationalVelocity += ROTATION/60;
+            roulette.rotationalVelocity += ROTATION/60;
         };
 
         window.addEventListener('mousemove', mouseMoveHandler);
 
-        window.addEventListener('mouseup', () => {
-            wheel.dragging = true;
+        window.addEventListener('mousedown', () => {
+            roulette.dragging = true;
             window.removeEventListener('mousemove', mouseMoveHandler);
         });
     }
@@ -42,13 +42,13 @@ window.addEventListener('mousedown', (event) => {
 
 function getAngle(x,y) {
     let angle;
-    let adjacent = x - wheel.absoluteX;
-    let hypotenuse = Math.sqrt(Math.pow(adjacent,2) + Math.pow(y - wheel.absoluteY,2));
+    let adjacent = x - roulette.absoluteX;
+    let hypotenuse = Math.sqrt(Math.pow(adjacent,2) + Math.pow(y - roulette.absoluteY,2));
     let cosine = adjacent/hypotenuse;
 
     angle = Math.acos(cosine);
 
-    if (y > wheel.absoluteY)
+    if (y > roulette.absoluteY)
         angle = 2*Math.PI - angle;
 
     return angle;

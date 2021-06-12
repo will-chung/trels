@@ -1,51 +1,18 @@
-import { getRadians } from './math.js'
-import { clear } from './roulette.js'
-
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
-const selectColor = 'white';
-
-const HEIGHT = 12.5; // px 
-
-class Sector {
-    constructor(value, startAngle, endAngle, color, wheel) {
+class Section {
+    constructor(value, startAngle, endAngle, innerRadius, outerRadius, color, sector) {
         this.value = value;
         this.startAngle = startAngle;
         this.endAngle = endAngle;
+        this.innerRadius = innerRadius;
+        this.outerRadius = outerRadius;
         this.color = color;
-        this.defaultColor = color;
-        this.wheel = wheel;
-        this.arcAngle = Math.abs(endAngle - startAngle);  
-        this.probability = this.arcAngle / (2*Math.PI);
-    }
-
-    copy() {
-        const copySector = new Sector(this.value, this.startAngle, this.endAngle, this.defaultColor, this.wheel);
-
-        return copySector;
-    }
-
-    fit(sectors) {
-        const arcAngle = this.arcAngle / sectors.length;
-
-        for (let i = 0; i < sectors.length; i++) {
-            const sector = sectors[i];
-            const startAngle = arcAngle * i + this.startAngle;
-            const endAngle = arcAngle * (i+1) + this.startAngle;
-
-            sector.startAngle = startAngle;
-            sector.endAngle = endAngle;
-            sector.calculateProbability();
-        }
+        this.sector = sector;
     }
 
     draw() {
-        const roulette = this.wheel.roulette;
-
-        const innerRadius = this.wheel.innerRadius;
-        const outerRadius = this.wheel.outerRadius;
-
         // to align wheel with vertical
         let startAngle = this.startAngle + (1/2)*Math.PI;
         let endAngle = this.endAngle + (1/2)*Math.PI;
@@ -59,55 +26,46 @@ class Sector {
         c.beginPath();
         c.strokeStyle = 'black';
         c.fillStyle = this.color;
-        c.lineWidth = 4;
 
         // if sector is fully collapsed
         if (this.arcAngle == 0) {
             let innerCoords = {
-                x: innerRadius * Math.cos(endAngle),
-                y: innerRadius * Math.sin(endAngle),
+                x: this.innerRadius * Math.cos(this.endAngle),
+                y: this.innerRadius * Math.sin(this.endAngle),
             };
             let outerCoords = {
-                x: outerRadius * Math.cos(endAngle),
-                y: outerRadius * Math.sin(endAngle),
+                x: this.outerRadius * Math.cos(this.endAngle),
+                y: this.outerRadius * Math.sin(this.endAngle),
             };
-            c.lineWidth = 2;
             c.moveTo(innerCoords.x, innerCoords.y);
             c.lineTo(outerCoords.x, outerCoords.y);
-        // else if fully extended (edge case)
-        } else if (this.arcAngle == 2*Math.PI) {
-            c.arc(roulette.x, roulette.y, innerRadius, startAngle, startAngle+(2*Math.PI), false);
-            c.arc(roulette.x, roulette.y, outerRadius, startAngle, startAngle+(2*Math.PI), false);
         } else {
+            const wheel = this.sector.wheel;
             // if sector spans 0 radians
             if (endAngle < startAngle) {
-                // edge case
-                if (startAngle == 2*Math.PI)
-                    startAngle = 0;
-
-                c.arc(roulette.x, roulette.y, innerRadius, startAngle, 0, false);
-                c.arc(roulette.x, roulette.y, innerRadius, 0, endAngle, false);
-                c.lineTo(outerRadius * Math.cos(endAngle), outerRadius * Math.sin(endAngle));
-                c.arc(roulette.x, roulette.y, outerRadius, endAngle, 0, true);
-                c.arc(roulette.x, roulette.y, outerRadius, 0, startAngle, true);
-                c.lineTo(innerRadius * Math.cos(startAngle), innerRadius * Math.sin(startAngle));
+                c.arc(wheel.x, wheel.y, this.innerRadius, startAngle, 0, false);
+                c.arc(wheel.x, wheel.y, this.innerRadius, 0, endAngle, false);
+                c.lineTo(this.outerRadius * Math.cos(endAngle), this.outerRadius * Math.sin(endAngle));
+                c.arc(wheel.x, wheel.y, this.outerRadius, endAngle, 0, true);
+                c.arc(wheel.x, wheel.y, this.outerRadius, 0, startAngle, true);
+                c.lineTo(this.innerRadius * Math.cos(startAngle), this.innerRadius * Math.sin(startAngle));
             } else {
-                c.arc(roulette.x, roulette.y, innerRadius, startAngle, endAngle, false);
-                c.lineTo(outerRadius * Math.cos(endAngle), outerRadius * Math.sin(endAngle));    
-                c.arc(roulette.x, roulette.y, outerRadius, endAngle, startAngle, true);  
-                c.lineTo(innerRadius * Math.cos(startAngle), innerRadius * Math.sin(startAngle));  
+                c.arc(wheel.x, wheel.y, this.innerRadius, startAngle, endAngle, false);
+                c.lineTo(this.outerRadius * Math.cos(endAngle), this.outerRadius * Math.sin(endAngle));    
+                c.arc(wheel.x, wheel.y, this.outerRadius, endAngle, startAngle, true);  
+                c.lineTo(this.innerRadius * Math.cos(startAngle), this.innerRadius * Math.sin(startAngle));  
             }
+            
+            c.stroke();
+            c.fill();
+            c.closePath();
         }
-
-        c.stroke();
-        c.fill();
-        c.closePath();
 
         this.label();
     }
 
     label() {
-        // vertical offset
+        // to align wheel with vertical
         let startAngle = this.startAngle + (1/2)*Math.PI;
         let endAngle = this.endAngle + (1/2)*Math.PI;
 
@@ -118,30 +76,27 @@ class Sector {
         if (endAngle > 2*Math.PI) endAngle %= (2*Math.PI);
         
         let midAngle;
-        const wheel = this.wheel;
+        this.calculateArcAngle();
         midAngle = this.startAngle + (this.arcAngle / 2);
-        let midRadius = (wheel.innerRadius + wheel.outerRadius) / 2;
+        let midRadius = (this.innerRadius + this.outerRadius) / 2;
         
         c.font = 'bold 32px sans-serif';
         let offset = c.measureText(this.value).width / 2;
         
         c.save();
         c.rotate(midAngle);
-        c.translate(-offset, midRadius - HEIGHT);
+        c.translate(-offset, midRadius);
         c.transform(1, 0, 0, -1, 0, 0);
 
         c.beginPath();
         c.fillStyle = 'black';
-        c.fillText(this.value, 0, 0); // TODO: fix magic numbers
+        c.fillText(this.value, 0, 0, 20); // TODO: fix magic numbers
         c.closePath();
         
         c.restore();
     }
 
     contains(x,y) {
-        const roulette = this.wheel.roulette;
-        const wheel = this.wheel;
-
         let startAngle = this.startAngle + (1/2)*Math.PI;
         let endAngle = this.endAngle + (1/2)*Math.PI;
 
@@ -152,17 +107,17 @@ class Sector {
         if (endAngle > 2*Math.PI) endAngle %= (2*Math.PI);
         
         // absolute coordinates of wheel center
-        let rouletteCenter = {
-            x: roulette.absoluteX,
-            y: roulette.absoluteY,
+        let wheelCenter = {
+            x: this.wheel.absoluteX,
+            y: this.wheel.absoluteY,
         }
 
-        let distance = Math.sqrt(Math.pow((x - rouletteCenter.x), 2) + Math.pow(y - rouletteCenter.y, 2));
-        if (wheel.innerRadius <= distance && distance <= wheel.outerRadius) {
-            let adjacent = x - rouletteCenter.x;
+        let distance = Math.sqrt(Math.pow((x - wheelCenter.x), 2) + Math.pow(y - wheelCenter.y, 2));
+        if (this.innerRadius <= distance && distance <= this.outerRadius) {
+            let adjacent = x - wheelCenter.x;
             let theta = Math.acos(adjacent / distance);
             
-            if (y > rouletteCenter.y) {
+            if (y > wheelCenter.y) {
                 theta = 2*Math.PI - theta;
             }
             // align with current wheel angle
@@ -187,13 +142,13 @@ class Sector {
     select() {
         clear();
         this.color = selectColor;
-        this.wheel.roulette.update();
+        this.wheel.draw();        
     }
 
     deselect() {
         clear();
         this.color = this.defaultColor;
-        this.wheel.roulette.update();    
+        this.wheel.draw()
     }
 
     adjustAngles() {
@@ -202,8 +157,8 @@ class Sector {
         if (this.startAngle > 2*Math.PI) this.startAngle %= 2*Math.PI;
         if (this.endAngle < 0) this.endAngle += 2*Math.PI;
         if (this.endAngle > 2*Math.PI) this.endAngle %= (2*Math.PI);
-    }
-
+    }  
+    
     calculateArcAngle() {
         let arcAngle;
 
@@ -223,8 +178,11 @@ class Sector {
     }
 
     update() {
+        this.adjustAngles();
+        this.calculateProbability();
         this.draw();
+        this.label();
     }
 }
 
-export { Sector };
+export { Section };
