@@ -1,4 +1,4 @@
-import { roulette, setAnimating, animate } from './roulette.js'
+import { roulette } from './roulette.js'
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
@@ -40,15 +40,15 @@ window.addEventListener('dblclick', (event) => {
 
 });
 
-function getAngle(x,y) {
+function getAngle(x, y) {
     let angle;
-    let adjacent = x - roulette.absoluteX;
-    let hypotenuse = Math.sqrt(Math.pow(adjacent,2) + Math.pow(y - roulette.absoluteY,2));
+    let adjacent = x - roulette.absX;
+    let hypotenuse = Math.sqrt(Math.pow(adjacent,2) + Math.pow(y - roulette.absY,2));
     let cosine = adjacent/hypotenuse;
 
     angle = Math.acos(cosine);
 
-    if (y > roulette.absoluteY)
+    if (y > roulette.absY)
         angle = 2*Math.PI - angle;
 
     return angle;

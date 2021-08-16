@@ -13,6 +13,8 @@ class Data {
             this.max = value;
         if (value < this.min) 
             this.min = value;
+
+        this.update();
     }
 
     clear() {
