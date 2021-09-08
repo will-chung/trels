@@ -1,57 +1,56 @@
-import { roulette } from './roulette.js'
+import { roulette } from './roulette.js';
 
+// TODO: singleton design
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
-// positive = counter-clockwise
-// negative = clockwise
-let ROTATION = (1/900)*Math.PI;
-
-window.addEventListener('dblclick', (event) => {
-
+addEventListener('mousedown', event => {
+  // if within roulette
+  if (roulette.contains(event.x, event.y)) {
     let mouseMoveHandler;
-    if (roulette.contains(event.x, event.y)) {
-        setAnimating(true);
-        animate();
-        let prevAngle = getAngle(event.x, event.y);
-        mouseMoveHandler = function(moveEvent) {
-            if (roulette.rotating == false)
-                roulette.rotating = true;
-            
-            let currAngle = getAngle(moveEvent.x, moveEvent.y);
-            // if spinning clockwise
-            if (currAngle < prevAngle) {
-                ROTATION = -Math.abs(ROTATION);
-            // else spinning counter-clockwise
-            } else { 
-                ROTATION = Math.abs(ROTATION);
-            }
-            prevAngle = currAngle;
-            roulette.rotationalVelocity += ROTATION/60;
-        };
+    let prevAngle = getAngle(event.x, event.y);
 
-        window.addEventListener('mousemove', mouseMoveHandler);
+    mouseMoveHandler = moveEvent => {
+      let currAngle = getAngle(moveEvent.x, moveEvent.y);
 
-        window.addEventListener('mousedown', () => {
-            roulette.dragging = true;
-            window.removeEventListener('mousemove', mouseMoveHandler);
-        });
-    }
+      let difference = currAngle - prevAngle;
+      c.rotate(difference);
+      roulette.update();
 
+      prevAngle = currAngle;
+    };
+
+    addEventListener('mousemove', mouseMoveHandler);
+
+    const mouseUpHandler = () => {
+      removeEventListener('mousemove', mouseMoveHandler);
+      removeEventListener('mouseup', mouseUpHandler);
+    };
+
+    // when mouse is released stop listening for movement
+    addEventListener('mouseup', mouseUpHandler);
+  }
 });
 
+/**
+ * Calculates the trigonometric angle of a point within the roulette, treating it as a unit circle.
+ *
+ * @param {Number} x The x-coordinate of the input point
+ * @param {Number} y The y-coordinate of the input point
+ * @returns The trigonometric angle, in radians, of the input point, treating the roulette as a unit circle
+ */
 function getAngle(x, y) {
-    let angle;
-    let adjacent = x - roulette.absX;
-    let hypotenuse = Math.sqrt(Math.pow(adjacent,2) + Math.pow(y - roulette.absY,2));
-    let cosine = adjacent/hypotenuse;
+  let angle;
+  let adjacent = x - roulette.absX;
+  let opposite = y - roulette.absY;
+  let hypotenuse = Math.sqrt(Math.pow(adjacent, 2) + Math.pow(opposite, 2));
+  let cosine = adjacent / hypotenuse;
 
-    angle = Math.acos(cosine);
+  angle = Math.acos(cosine);
 
-    if (y > roulette.absY)
-        angle = 2*Math.PI - angle;
+  if (y > roulette.absY) angle = 2 * Math.PI - angle;
 
-    return angle;
+  return angle;
 }
 
-export { ROTATION, getAngle };
+export { getAngle };

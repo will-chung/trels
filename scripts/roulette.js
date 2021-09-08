@@ -1,23 +1,29 @@
-import { randomValueInRange, randomValueInArray, getRadians } from './math.js'
-import { Handle } from './handle.js'
-import { Sector } from './sector.js'
-import { Data } from './data.js'
-import { ROTATION } from './tracker.js'
-import './adjuster.js'
-import { Wheel } from './wheel.js'
-import { FPS } from './fps.js'
+import { randomValueInRange, randomValueInArray, getRadians } from './math.js';
+import { Handle } from './handle.js';
+import { Sector } from './sector.js';
+import { Data } from './data.js';
+import { Wheel } from './wheel.js';
+import { FPS } from './fps.js';
+import './adjuster.js';
+import './selector.js';
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
-let width = getCanvasDimensions(), height = getCanvasDimensions(); 
-initializeCanvas(innerWidth/2 - width/2, innerHeight/2 - height/2, width, height);
+let width = getCanvasDimensions(),
+  height = getCanvasDimensions();
+initializeCanvas(
+  innerWidth / 2 - width / 2,
+  innerHeight / 2 - height / 2,
+  width,
+  height
+);
 
 let roulette;
 let data;
 
-const DEFAULT_ACCELERATION = (1/3) * Math.PI;     // 1 degree/frame
-const DEFAULT_DECCELERATION = DEFAULT_ACCELERATION/8; // 0.125 degrees/frame
+const DEFAULT_ACCELERATION = (1 / 3) * Math.PI; // 1 degree/frame
+const DEFAULT_DECCELERATION = DEFAULT_ACCELERATION / 8; // 0.125 degrees/frame
 const DEFAULT_DURATION = 0.75;
 
 let acceleration = DEFAULT_ACCELERATION;
@@ -33,26 +39,6 @@ colors.push('#00629B');
 colors.push('#FFCD00');
 colors.push('#182B49');
 
-// window.addEventListener('click', (event) => {
-//   let selected = false;
-
-//   roulette.wheels.forEach(wheel => {
-//     wheel.sectors.forEach(sector => {
-//       if (sector.contains(event.x, event.y)) {
-//         roulette.select(sector);
-//         selected = true;
-//         // console.log(sector)
-//       }
-//       else 
-//         roulette.deselect(sector); 
-//     });
-//   });
-
-//   if (!selected) {
-//     roulette.reset();
-//   }
-// });
-
 document.getElementById('btnClockwise').addEventListener('click', () => {
   acceleration = -DEFAULT_ACCELERATION;
   decceleration = -DEFAULT_DECCELERATION;
@@ -63,7 +49,7 @@ document.getElementById('btnCounter').addEventListener('click', () => {
   acceleration = DEFAULT_ACCELERATION;
   decceleration = DEFAULT_DECCELERATION;
   spin();
-})
+});
 
 document.getElementById('btnInsert').addEventListener('click', () => {
   roulette.insert();
@@ -89,11 +75,19 @@ document.getElementById('btnSimplify').addEventListener('click', () => {
   roulette.simplify();
 });
 
+document.getElementById('btnInsertSector').onclick = () => {
+  roulette.insertSector();
+};
+
+document.getElementById('btnRemoveSector').onclick = () => {
+  roulette.removeSector();
+};
+
 document.getElementById('btnRandom').addEventListener('click', () => {
   roulette.random();
 });
 
-document.addEventListener('submit', (event) => {
+document.addEventListener('submit', event => {
   event.preventDefault();
   const sampleSize = document.getElementById('sample-size').value;
   const numTrials = document.getElementById('num-trials').value;
@@ -102,7 +96,6 @@ document.addEventListener('submit', (event) => {
 
 document.getElementById('btnClear').addEventListener('click', () => {
   data.clear();
-  data.update();
 });
 
 class Roulette {
@@ -120,27 +113,36 @@ class Roulette {
     this.wheels = [];
     this.handles = [];
 
-    // currently selected wheel
+    // currently selected wheel and sector
     // null if no wheel is selected
     this.selectedWheel;
-    
-    // ...
-    this.radians = Math.PI;  
-    this.finalRadians = this.radians;
+    this.selectedSector;
+
+    // angle, in radians, roulette stops at
+    this.finalRadians = Math.PI;
 
     this.angularVelocity = 0;
     this.maxAngularVelocity = 0;
-    this.rotationalVelocity = 0;
 
     // flags to keep track of the wheel's state
     this.spinning = false;
     this.spinningUp = false;
-    this.rotating = false;
-    this.dragging = false;
   }
 
+  insertSector() {
+    // current selected sector
+    const sector = this.selectedSector;
+    const sectorGroup = sector.sectorGroup;
+
+    if (sector) {
+      sectorGroup.insert(sector);
+    }
+  }
+
+  removeSector() {}
+
   random() {
-    const angle = Math.random() * (2*Math.PI);
+    const angle = Math.random() * (2 * Math.PI);
     c.rotate(angle);
     this.record();
   }
@@ -148,7 +150,7 @@ class Roulette {
   collectData(sampleSize, numTrials) {
     const runs = sampleSize * numTrials;
     const possibleValues = [];
-    
+
     const outermostWheel = this.wheels[this.wheels.length - 1];
     outermostWheel.sectors.forEach(sector => {
       possibleValues.push(sector.value);
@@ -167,13 +169,12 @@ class Roulette {
     const index = this.selectedWheel.level;
     const insertWheel = this.selectedWheel.copy();
     insertWheel.level = this.wheels.length;
-    this.wheels.splice(index+1, 0, insertWheel);
+    this.wheels.splice(index + 1, 0, insertWheel);
   }
 
   // TODO: set correct level
   remove() {
-    if (this.selectedWheel.level == 0)
-      return;
+    if (this.selectedWheel.level == 0) return;
     const index = this.selectedWheel.level;
     this.wheels.splice(index, 1);
   }
@@ -190,16 +191,18 @@ class Roulette {
         const wheel = this.wheels[i];
         for (let j = 0; j < wheel.sectors.length; j++) {
           const innerSector = wheel.sectors[j];
-          if (innerSector.startAngle <= startAngle && endAngle <= innerSector.endAngle) {
+          if (
+            innerSector.startAngle <= startAngle &&
+            endAngle <= innerSector.endAngle
+          ) {
             sector.value += innerSector.value;
-            console.log(sector.value)
-          }
-          else {
+            console.log(sector.value);
+          } else {
             j == wheel.sectors.length;
           }
         }
       }
-    })
+    });
 
     this.wheels.push(totalWheel);
     data.update();
@@ -227,10 +230,10 @@ class Roulette {
     const outermostSectors = outermostWheel.sectors;
     const selectedWheel = this.selectedWheel;
     const selectedSectors = selectedWheel.sectors;
-    
+
     // set level of new wheel
-    repeatWheel.level = outermostWheel.level+1;
-    
+    repeatWheel.level = outermostWheel.level + 1;
+
     for (let i = 0; i < outermostSectors.length; i++) {
       let repeat = [];
       const currSector = outermostSectors[i];
@@ -238,17 +241,21 @@ class Roulette {
         const sector = selectedSectors[j];
         const newSector = sector.copy();
         newSector.wheel = repeatWheel;
-        repeat.push(newSector);        
+        repeat.push(newSector);
       }
 
       currSector.fit(repeat);
       repeat.forEach(sector => {
         repeatWheel.addSector(sector);
       });
-      
+
       // if next sector has same arcAngle
-      while (i+1 < outermostSectors.length && Math.abs(outermostSectors[i+1].arcAngle - currSector.arcAngle) < PRECISION) {
-        const startAngle = outermostSectors[i+1].startAngle;
+      while (
+        i + 1 < outermostSectors.length &&
+        Math.abs(outermostSectors[i + 1].arcAngle - currSector.arcAngle) <
+          PRECISION
+      ) {
+        const startAngle = outermostSectors[i + 1].startAngle;
         repeat.forEach(sector => {
           const newSector = sector.copy();
           newSector.startAngle += startAngle;
@@ -281,18 +288,19 @@ class Roulette {
 
     // offset from vertical
     let angleOffset = getRadians(c.getTransform());
+    // draw pin
     c.save();
     c.rotate(-angleOffset);
-    
+
     c.strokeStyle = 'black';
     c.lineWidth = 2;
-    
+
     c.beginPath();
-    c.moveTo(-1, this.radius);
-    c.lineTo(-1, this.radius - 20);
+    c.moveTo(0, this.radius);
+    c.lineTo(0, this.radius - 20);
     c.stroke();
     c.closePath();
-    
+
     c.restore();
   }
 
@@ -301,7 +309,7 @@ class Roulette {
     wheels.forEach((wheel, index) => {
       wheel.roulette = this;
       wheel.level = index;
-    })
+    });
     this.wheels = wheels;
 
     this.updateRadii();
@@ -314,7 +322,7 @@ class Roulette {
     wheel.level = this.wheels.length;
     // add wheel to roulette
     this.wheels.push(wheel);
-    
+
     this.updateRadii();
   }
 
@@ -325,7 +333,7 @@ class Roulette {
     for (let i = 0; i < numWheels; i++) {
       const wheel = this.wheels[i];
       wheel.innerRadius = radius * i;
-      wheel.outerRadius = radius * (i+1);
+      wheel.outerRadius = radius * (i + 1);
     }
   }
 
@@ -340,42 +348,22 @@ class Roulette {
       handle.update();
     });
   }
-  
+
   select(sector) {
-    this.selectedSector = sector;
     this.selectedWheel = sector.wheel;
+    this.selectedSector = sector;
     sector.select();
-    data.setProbability(sector.probability); 
+    data.setProbability(sector.probability);
   }
 
   deselect(sector) {
     sector.deselect();
   }
 
-  // rotate() {
-  //   if (this.dragging) {
-  //     // spinning clockwise
-  //     if (this.rotationalVelocity < 0)
-  //       this.rotationalVelocity += Math.abs(ROTATION)/60; 
-  //     // spinning counter-clockwise
-  //     else 
-  //       this.rotationalVelocity -= Math.abs(ROTATION)/60;
-      
-  //     if (Math.abs(this.rotationalVelocity) <= Math.abs(ROTATION/60)) {
-  //       this.rotating = false;
-  //       this.dragging = false;
-  //       animating = false;
-  //       this.record();
-  //     }
-  //   }
-
-  //   c.rotate(this.rotationalVelocity);
-  // }
-   
   /**
    * Spins the roulette wheel to stop at a specified angle.
-   * 
-   * @param {Number} radians The final angle in radians to stop spinning at 
+   *
+   * @param {Number} radians The final angle in radians to stop spinning at
    */
   spin(radians) {
     // set spin configuration
@@ -396,21 +384,23 @@ class Roulette {
   spinDown() {
     let trueDecceleration = decceleration / FPS;
 
-    if (Math.abs(this.angularVelocity) <= Math.PI/180 * 3) {
-      let radians = getRadians(c.getTransform()); 
+    if (Math.abs(this.angularVelocity) <= (Math.PI / 180) * 3) {
+      let radians = getRadians(c.getTransform());
 
       // make decceleration proportional to velocity
-      if (Math.abs(this.angularVelocity) >= Math.PI/180) {
-        this.angularVelocity -= trueDecceleration/9;
-      } else if (Math.abs(this.angularVelocity) >= Math.PI/180 * (1/3)) {
-        this.angularVelocity -= trueDecceleration/81;
+      if (Math.abs(this.angularVelocity) >= Math.PI / 180) {
+        this.angularVelocity -= trueDecceleration / 9;
+      } else if (Math.abs(this.angularVelocity) >= (Math.PI / 180) * (1 / 3)) {
+        this.angularVelocity -= trueDecceleration / 81;
       }
 
       // TODO: fix magic numbers
       // if (approximately) at stop angle and wheel is slow enough
       // then stop spinning
-      if (Math.abs(this.finalRadians - radians) <= 0.01 && 
-          Math.abs(this.angularVelocity) <= Math.PI/180) {
+      if (
+        Math.abs(this.finalRadians - radians) <= 0.01 &&
+        Math.abs(this.angularVelocity) <= Math.PI / 180
+      ) {
         this.stop();
       }
     } else {
@@ -432,14 +422,13 @@ class Roulette {
       y: roulette.absY - roulette.radius + 10, // TODO: fix magic numbers
     };
 
-    const currRadians = getRadians(c.getTransform()); 
+    const currRadians = getRadians(c.getTransform());
 
     this.wheels.forEach(wheel => {
       wheel.sectors.forEach(sector => {
-
         // case when pointer lands directly on an edge
         if (currRadians == sector.startAngle) {
-          let coinFlip = Math.round(Math.random()*2);
+          let coinFlip = Math.round(Math.random() * 2);
           switch (coinFlip) {
             case 0:
               pointerCoordinates.x += 2;
@@ -469,35 +458,36 @@ class Roulette {
     let center = {
       x: this.absX,
       y: this.absY,
-    }
-    
-    let distance = Math.sqrt(Math.pow(x - center.x, 2) + 
-                             Math.pow(y - center.y, 2));
+    };
+
+    let distance = Math.sqrt(
+      Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2)
+    );
     return distance;
   }
 
   update() {
     /*
      * Two stages of spinning:
-     *   1. Spinning up - increase velocity until max
-     *   2. Spinning down - decrease velocity until stop
+     *  1. Spinning up - increase velocity until max
+     *  2. Spinning down - decrease velocity until stop
      */
 
-    // Stage 1
-    if (Math.abs(this.angularVelocity) < Math.abs(this.maxAngularVelocity) 
-        && this.spinningUp) {
-      this.spinUp();
-    // Stage 2
-    } else {
-      this.spinningUp = false;
-      this.spinDown();
+    if (this.spinning) {
+      if (
+        Math.abs(this.angularVelocity) < Math.abs(this.maxAngularVelocity) &&
+        this.spinningUp
+      ) {
+        this.spinUp();
+      } else {
+        this.spinningUp = false;
+        this.spinDown();
+      }
+      requestAnimationFrame(this.update.bind(this));
     }
- 
+
     clear();
     this.draw();
-
-    if (this.spinning) 
-      requestAnimationFrame(this.update.bind(this));
   }
 }
 
@@ -517,20 +507,20 @@ function initializeCanvas(x, y, width, height) {
   canvas.height = height;
   canvas.style.position = 'absolute';
   canvas.style.top = y + 'px';
-  canvas.style.left = x + 'px'
+  canvas.style.left = x + 'px';
   canvas.x = x;
   canvas.y = y;
-  
-  c.translate(canvas.width/2, canvas.height/2);
+
+  c.translate(canvas.width / 2, canvas.height / 2);
   c.transform(1, 0, 0, -1, 0, 0);
- }
+}
 
 function initializeRoulette() {
-  let radius = canvas.width/2 - CANVAS_PADDING;
+  let radius = canvas.width / 2 - CANVAS_PADDING;
 
   let wheel = new Wheel();
   wheel.addSector(new Sector(0, 0, Math.PI, colors[0], wheel));
-  wheel.addSector(new Sector(1, Math.PI, 2*Math.PI, colors[1], wheel));
+  wheel.addSector(new Sector(1, Math.PI, 2 * Math.PI, colors[1], wheel));
 
   roulette = new Roulette(0, 0, radius);
   roulette.addWheel(wheel);
@@ -538,7 +528,7 @@ function initializeRoulette() {
   initializeHandles();
 
   roulette.update();
-  
+
   data = new Data(roulette);
   data.update();
 }
@@ -568,13 +558,27 @@ function initializeHandles() {
 }
 
 function spin() {
-  roulette.spin(randomValueInRange(0, 2*Math.PI));
+  roulette.spin(randomValueInRange(0, 2 * Math.PI));
 }
 
 function clear() {
-  c.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+  c.clearRect(
+    -canvas.width / 2,
+    -canvas.height / 2,
+    canvas.width,
+    canvas.height
+  );
 }
 
 initializeRoulette();
 
-export { Roulette , initializeRoulette, roulette, clear, acceleration, decceleration, spinUpDuration, data };
+export {
+  Roulette,
+  initializeRoulette,
+  roulette,
+  clear,
+  acceleration,
+  decceleration,
+  spinUpDuration,
+  data,
+};
