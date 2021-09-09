@@ -15,9 +15,11 @@ addEventListener('mousedown', event => {
 
       let difference = currAngle - prevAngle;
       c.rotate(difference);
-      roulette.update();
 
       prevAngle = currAngle;
+
+      // re-render
+      roulette.update();
     };
 
     addEventListener('mousemove', mouseMoveHandler);

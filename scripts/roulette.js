@@ -6,6 +6,7 @@ import { Wheel } from './wheel.js';
 import { FPS } from './fps.js';
 import './adjuster.js';
 import './selector.js';
+import { SectorGroup } from './sectorGroup.js';
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
@@ -110,11 +111,12 @@ class Roulette {
     this.radius = radius;
 
     // roulette wheel composed of series of sub-wheels
+    // and sector groups
     this.wheels = [];
+    this.sectorGroups = [];
     this.handles = [];
 
     // currently selected wheel and sector
-    // null if no wheel is selected
     this.selectedWheel;
     this.selectedSector;
 
@@ -134,9 +136,10 @@ class Roulette {
     const sector = this.selectedSector;
     const sectorGroup = sector.sectorGroup;
 
-    if (sector) {
-      sectorGroup.insert(sector);
-    }
+    // TODO: error handling
+    if (sector) sectorGroup.insert(sector);
+
+    // this.updateSectorGroups();
   }
 
   removeSector() {}
@@ -343,6 +346,42 @@ class Roulette {
     });
   }
 
+  updateSectorGroups() {
+    // innermost sectors
+    const roots = this.wheels[0].sectors;
+
+    for (const sector of roots) {
+      if (!sector.sectorGroup || sector.sectorGroup.root !== sector) {
+        sector.sectorGroup = new SectorGroup(sector);
+        this.sectorGroups.push(sector.sectorGroup);
+      }
+      this.#extract(sector);
+    }
+
+    // update all ratios
+    for (const wheel of this.wheels) {
+      for (const sector of wheel.sectors) {
+        sector.calculateRatio();
+      }
+    }
+  }
+
+  #extract(sector) {
+    const startAngle = sector.startAngle;
+    const endAngle = sector.endAngle;
+    const sectorGroup = sector.sectorGroup;
+
+    // extract sectors belonging to sectorGroup
+    for (let i = 1; i < this.wheels.length; i++) {
+      const sectors = this.wheels[i].sectors;
+      for (const sector of sectors) {
+        if (startAngle <= sector.startAngle && sector.endAngle <= endAngle) {
+          sectorGroup.push(sector);
+        }
+      }
+    }
+  }
+
   updateHandles() {
     this.handles.forEach(handle => {
       handle.update();
@@ -528,6 +567,7 @@ function initializeRoulette() {
   initializeHandles();
 
   roulette.update();
+  roulette.updateSectorGroups();
 
   data = new Data(roulette);
   data.update();

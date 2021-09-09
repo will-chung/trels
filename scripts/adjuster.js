@@ -46,13 +46,6 @@ addEventListener('mousedown', event => {
             if (Math.round(sector.arcAngle) == 0) {
               sector.arcAngle = 0;
               sector.probability = 0;
-              adjacentSector.arcAngle = 2 * Math.PI;
-              adjacentSector.probability = 1;
-            } else {
-              sector.arcAngle = 2 * Math.PI;
-              sector.probability = 1;
-              adjacentSector.arcAngle = 0;
-              adjacentSector.probability = 0;
             }
           } else {
             sector.calculateProbability();

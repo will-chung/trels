@@ -1,7 +1,6 @@
 import { roulette } from './roulette.js';
 
 addEventListener('mousedown', event => {
-  let selected = false;
   const start = [event.x, event.y];
 
   const mouseUpHandler = upEvent => {
@@ -14,9 +13,9 @@ addEventListener('mousedown', event => {
           start[0] === end[0] &&
           start[1] === end[1]
         ) {
+          roulette.reset();
           roulette.select(sector);
-          selected = true;
-        } else roulette.deselect(sector);
+        }
       });
     });
 
@@ -24,6 +23,19 @@ addEventListener('mousedown', event => {
   };
 
   addEventListener('mouseup', mouseUpHandler);
-
-  if (!selected) roulette.reset();
 });
+
+/*
+ * Double click to deselect sectors
+ **/
+// addEventListener('dblclick', event => {
+//   let contains = false;
+
+//   for (const wheel of roulette.wheels) {
+//     for (const sector of wheel.sectors) {
+//       if (sector.contains(event.x, event.y)) contains = true;
+//     }
+//   }
+
+//   if (!contains) roulette.reset();
+// });

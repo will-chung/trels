@@ -101,6 +101,7 @@ class Data {
     probLabel.textContent = 'Probability: ' + probability;
   }
 
+  // TODO: cleanup code
   update() {
     let count = document.getElementById('count');
     let expectedMean = document.getElementById('expected-mean');
