@@ -33,7 +33,7 @@ let spinUpDuration = DEFAULT_DURATION;
 
 const CANVAS_PADDING = 25; // px
 
-const PRECISION = 0.0000001;
+const PRECISION = 0.1;
 
 const colors = [];
 colors.push('#00629B');
@@ -612,13 +612,4 @@ function clear() {
 
 initializeRoulette();
 
-export {
-  Roulette,
-  initializeRoulette,
-  roulette,
-  clear,
-  acceleration,
-  decceleration,
-  spinUpDuration,
-  data,
-};
+export { Roulette, initializeRoulette, clear, roulette, data, PRECISION };

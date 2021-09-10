@@ -1,6 +1,9 @@
 import { roulette, data } from './roulette.js';
 import { getAngle } from './tracker.js';
 
+const CLOCKWISE = 0;
+const COUNTERCLOCKWISE = 1;
+
 addEventListener('mousedown', event => {
   const handles = roulette.handles;
   let mouseMoveHandler;
@@ -14,44 +17,29 @@ addEventListener('mousedown', event => {
 
       mouseMoveHandler = moveEvent => {
         let currAngle = getAngle(moveEvent.x, moveEvent.y);
+        let difference = currAngle - prevAngle;
+
+        // to account for crossing 0 deg
+        if (Math.abs(difference) > 1) {
+          // if crossing counter-clockwise
+          if (currAngle > prevAngle) difference -= 2 * Math.PI;
+          // else crossing clockwise
+          else difference += 2 * Math.PI;
+        }
+
+        let direction = difference > 0 ? COUNTERCLOCKWISE : CLOCKWISE;
 
         // use sector.endAngle rather than currAngle
         // because of vertical offset
-        if (
-          handle.lowerBound <= sector.endAngle &&
-          sector.endAngle <= handle.upperBound
-        ) {
-          let difference = currAngle - prevAngle;
-
-          // to account for crossing 0 deg
-          if (Math.abs(difference) > 1) {
-            // if crossing counter-clockwise
-            if (currAngle > prevAngle) difference -= 2 * Math.PI;
-            // else crossing clockwise
-            else difference += 2 * Math.PI;
-          }
-
-          if (sector.endAngle + difference < handle.lowerBound) {
-            sector.endAngle = handle.lowerBound;
-          } else if (sector.endAngle + difference > handle.upperBound) {
-            sector.endAngle = handle.upperBound;
-          } else {
-            sector.endAngle += difference;
-          }
+        if (handle.withinBounds(difference, direction)) {
+          sector.endAngle += difference;
+          sector.endAngle %= 2 * Math.PI;
 
           adjacentSector.startAngle = sector.endAngle;
 
-          // edge case when sector becomes full circle / fully collapsed
-          if (sector.startAngle == sector.endAngle) {
-            if (Math.round(sector.arcAngle) == 0) {
-              sector.arcAngle = 0;
-              sector.probability = 0;
-            }
-          } else {
-            sector.calculateProbability();
-            adjacentSector.calculateProbability();
-          }
-        }
+          sector.calculateProbability();
+          adjacentSector.calculateProbability();
+        } // else handle.setBounds(difference);
 
         prevAngle = currAngle;
         update();

@@ -1,4 +1,5 @@
 import { getRadians } from './math.js';
+import { PRECISION } from './roulette.js';
 
 let canvas = document.querySelector('canvas');
 let c = canvas.getContext('2d');
@@ -16,37 +17,8 @@ class Handle {
     this.x = rouletteRadius * Math.cos(endAngle);
     this.y = rouletteRadius * Math.sin(endAngle);
 
-    // maximum and minimum extension of sector
-    this.upperBound = this.adjacentSector.endAngle;
-    this.lowerBound = this.sector.startAngle;
-
-    // edge case when we only have 2 sectors
-    if (this.lowerBound == this.upperBound) {
-      this.upperBound += 2 * Math.PI;
-    }
-
     this.radius = radius;
     this.color = sector.color;
-  }
-
-  draw() {
-    const angle = this.sector.endAngle;
-    const radius = this.sector.wheel.roulette.radius;
-
-    c.save();
-    c.rotate(angle);
-
-    c.beginPath();
-    c.fillStyle = this.color;
-
-    // if sector is fully collapsed
-    if (this.sector.arcAngle !== 0)
-      c.arc(0, radius, this.radius, 0, 2 * Math.PI, false);
-
-    c.fill();
-    c.closePath();
-
-    c.restore();
   }
 
   contains(x, y) {
@@ -84,6 +56,65 @@ class Handle {
     return distance;
   }
 
+  draw() {
+    const angle = this.sector.endAngle;
+    const radius = this.sector.wheel.roulette.radius;
+
+    c.save();
+    c.rotate(angle);
+
+    c.beginPath();
+    c.fillStyle = this.color;
+
+    // if sector is fully collapsed
+    if (this.sector.arcAngle !== 0)
+      c.arc(0, radius, this.radius, 0, 2 * Math.PI, false);
+
+    c.fill();
+    c.closePath();
+
+    c.restore();
+  }
+
+  setBounds(difference) {
+    const sector = this.sector;
+    const adjacentSector = this.adjacentSector;
+    const newAngle = sector.endAngle + difference;
+
+    // if last sector
+    if (
+      sector.startAngle > adjacentSector.startAngle &&
+      adjacentSector.endAngle + 2 * Math.PI - newAngle < 0
+    ) {
+      sector.endAngle = adjacentSector.endAngle + 2 * Math.PI;
+      adjacentSector.startAngle = adjacentSector.endAngle + 2 * Math.PI;
+
+      sector.arcAngle =
+        adjacentSector.endAngle + 2 * Math.PI - sector.startAngle;
+      sector.probability = sector.arcAngle / (2 * Math.PI);
+      adjacentSector.arcAngle = 0;
+      adjacentSector.probability = 0;
+    } else if (adjacentSector.endAngle - newAngle < 0) {
+      sector.endAngle = adjacentSector.endAngle;
+      adjacentSector.startAngle = adjacentSector.endAngle;
+
+      sector.arcAngle = adjacentSector.endAngle - sector.startAngle;
+      sector.probability = sector.arcAngle / (2 * Math.PI);
+      adjacentSector.arcAngle = 0;
+      adjacentSector.probability = 0;
+    }
+
+    if (newAngle - sector.startAngle < 0) {
+      sector.endAngle = sector.startAngle;
+      adjacentSector.startAngle = sector.startAngle;
+
+      sector.arcAngle = 0;
+      sector.probability = 0;
+      adjacentSector.arcAngle = adjacentSector.endAngle - sector.startAngle;
+      adjacentSector.probability = adjacentSector.arcAngle / (2 * Math.PI);
+    }
+  }
+
   update() {
     const endAngle = this.sector.endAngle + (1 / 2) * Math.PI;
     const rouletteRadius = this.sector.wheel.roulette.radius;
@@ -95,21 +126,27 @@ class Handle {
     this.x = rouletteRadius * Math.cos(angle);
     this.y = rouletteRadius * Math.sin(angle);
 
-    // update bounds
-    this.upperBound = this.adjacentSector.endAngle;
-    this.lowerBound = this.sector.startAngle;
-
-    // edge case when we only have 2 sectors
-    if (this.lowerBound == this.upperBound) {
-      // TODO: explain
-      // this.sector.startAngle == this.sector.endAngle : full circle / fully collapsed
-      // this.sector.startAngle > this.sector.endAngle : moved across 0 degs
-      if (this.sector.startAngle >= this.sector.endAngle)
-        this.lowerBound -= 2 * Math.PI;
-      else this.upperBound += 2 * Math.PI;
-    }
-
     this.draw();
+  }
+
+  withinBounds(difference, direction) {
+    // direction = 0 : clockwise
+    // direction = 1 : counterclockwise
+    const sector = this.sector;
+    const adjacentSector = this.adjacentSector;
+    let newAngle = (sector.endAngle + difference) % (2 * Math.PI);
+    if (newAngle < 0) newAngle += 2 * Math.PI;
+
+    if (
+      Math.abs(newAngle - adjacentSector.endAngle) > PRECISION &&
+      Math.abs(newAngle - sector.startAngle)
+    )
+      return true;
+    else {
+      return direction
+        ? newAngle - adjacentSector.endAngle < 0
+        : newAngle - sector.startAngle > 0;
+    }
   }
 }
 
