@@ -1,5 +1,6 @@
 import { getRadians } from './math.js';
 import { PRECISION } from './roulette.js';
+import { CLOCKWISE, COUNTERCLOCKWISE } from './adjuster.js';
 
 let canvas = document.querySelector('canvas');
 let c = canvas.getContext('2d');
@@ -81,37 +82,18 @@ class Handle {
     const adjacentSector = this.adjacentSector;
     const newAngle = sector.endAngle + difference;
 
-    // if last sector
-    if (
-      sector.startAngle > adjacentSector.startAngle &&
-      adjacentSector.endAngle + 2 * Math.PI - newAngle < 0
-    ) {
-      sector.endAngle = adjacentSector.endAngle + 2 * Math.PI;
-      adjacentSector.startAngle = adjacentSector.endAngle + 2 * Math.PI;
-
-      sector.arcAngle =
-        adjacentSector.endAngle + 2 * Math.PI - sector.startAngle;
-      sector.probability = sector.arcAngle / (2 * Math.PI);
-      adjacentSector.arcAngle = 0;
-      adjacentSector.probability = 0;
-    } else if (adjacentSector.endAngle - newAngle < 0) {
+    if (newAngle - adjacentSector.endAngle > 0) {
       sector.endAngle = adjacentSector.endAngle;
       adjacentSector.startAngle = adjacentSector.endAngle;
 
-      sector.arcAngle = adjacentSector.endAngle - sector.startAngle;
-      sector.probability = sector.arcAngle / (2 * Math.PI);
-      adjacentSector.arcAngle = 0;
-      adjacentSector.probability = 0;
-    }
-
-    if (newAngle - sector.startAngle < 0) {
+      sector.calculateProbability();
+      adjacentSector.calculateProbability();
+    } else if (newAngle - sector.startAngle < 0) {
       sector.endAngle = sector.startAngle;
       adjacentSector.startAngle = sector.startAngle;
 
-      sector.arcAngle = 0;
-      sector.probability = 0;
-      adjacentSector.arcAngle = adjacentSector.endAngle - sector.startAngle;
-      adjacentSector.probability = adjacentSector.arcAngle / (2 * Math.PI);
+      sector.calculateProbability();
+      adjacentSector.calculateProbability();
     }
   }
 
@@ -129,23 +111,49 @@ class Handle {
     this.draw();
   }
 
-  withinBounds(difference, direction) {
+  withinBounds(currAngle, difference, direction) {
     // direction = 0 : clockwise
     // direction = 1 : counterclockwise
     const sector = this.sector;
     const adjacentSector = this.adjacentSector;
+
+    // check if currAngle is out of bounds
+    // if (sector.spans) {
+    //   if (
+    //     direction == COUNTERCLOCKWISE &&
+    //     currAngle > adjacentSector.startAngle
+    //   ) {
+    //     console.log('hello');
+    //     return false;
+    //   }
+    // } else {
+    //   // if currAngle out of bounds
+    //   if (
+    //     (direction == COUNTERCLOCKWISE &&
+    //       currAngle > adjacentSector.endAngle) ||
+    //     (direction == CLOCKWISE && currAngle < sector.startAngle)
+    //   )
+    //     return false;
+    // }
+
     let newAngle = (sector.endAngle + difference) % (2 * Math.PI);
     if (newAngle < 0) newAngle += 2 * Math.PI;
 
     if (
       Math.abs(newAngle - adjacentSector.endAngle) > PRECISION &&
-      Math.abs(newAngle - sector.startAngle)
-    )
-      return true;
-    else {
-      return direction
-        ? newAngle - adjacentSector.endAngle < 0
-        : newAngle - sector.startAngle > 0;
+      Math.abs(newAngle - sector.startAngle) > PRECISION
+    ) {
+      if (
+        (sector.spans && sector.startAngle <= sector.endAngle) ||
+        (adjacentSector.spans &&
+          adjacentSector.startAngle <= adjacentSector.endAngle)
+      )
+        return false;
+      else return true;
+    } else {
+      return direction === COUNTERCLOCKWISE
+        ? newAngle - adjacentSector.endAngle <= 0
+        : newAngle - sector.startAngle >= 0;
     }
   }
 }

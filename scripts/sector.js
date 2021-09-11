@@ -17,10 +17,12 @@ class Sector {
     this.color = color;
     this.defaultColor = color;
     this.wheel = wheel;
+
     this.arcAngle = Math.abs(endAngle - startAngle);
     this.probability = this.arcAngle / (2 * Math.PI);
     this.ratio;
     this.sectorGroup = null;
+    this.spans = false;
   }
 
   calculateRatio() {
@@ -249,8 +251,7 @@ class Sector {
     let arcAngle;
 
     // if sector spans 0 degrees
-    if (this.endAngle < this.startAngle)
-      arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
+    if (this.spans) arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
     else arcAngle = Math.abs(this.endAngle - this.startAngle);
 
     this.arcAngle = arcAngle;

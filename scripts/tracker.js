@@ -4,6 +4,8 @@ import { roulette } from './roulette.js';
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
+const VERTICAL_OFFSET = Math.PI / 2;
+
 addEventListener('mousedown', event => {
   // if within roulette
   if (roulette.contains(event.x, event.y)) {
@@ -51,6 +53,10 @@ function getAngle(x, y) {
   angle = Math.acos(cosine);
 
   if (y > roulette.absY) angle = 2 * Math.PI - angle;
+
+  // account for vertical offset of roulette
+  angle -= VERTICAL_OFFSET;
+  if (angle < 0) angle += 2 * Math.PI;
 
   return angle;
 }

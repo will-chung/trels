@@ -21,25 +21,39 @@ addEventListener('mousedown', event => {
 
         // to account for crossing 0 deg
         if (Math.abs(difference) > 1) {
-          // if crossing counter-clockwise
+          // if crossing clockwise
           if (currAngle > prevAngle) difference -= 2 * Math.PI;
-          // else crossing clockwise
+          // else crossing counter-clockwise
           else difference += 2 * Math.PI;
         }
 
         let direction = difference > 0 ? COUNTERCLOCKWISE : CLOCKWISE;
+        // console.log(handle.withinBounds(currAngle, difference, direction));
 
         // use sector.endAngle rather than currAngle
         // because of vertical offset
-        if (handle.withinBounds(difference, direction)) {
+        if (handle.withinBounds(currAngle, difference, direction)) {
           sector.endAngle += difference;
+          console.log(sector.spans, adjacentSector.spans);
+
+          if (sector.endAngle > 2 * Math.PI) {
+            sector.spans = true;
+            adjacentSector.spans = false;
+          } else if (sector.endAngle < 0) {
+            sector.spans = false;
+            adjacentSector.spans = true;
+          } else if (sector.startAngle > sector.endAngle) sector.spans = true;
+          else if (adjacentSector.startAngle > adjacentSector.endAngle)
+            adjacentSector.spans = true;
+
           sector.endAngle %= 2 * Math.PI;
+          if (sector.endAngle < 0) sector.endAngle += 2 * Math.PI;
 
           adjacentSector.startAngle = sector.endAngle;
 
           sector.calculateProbability();
           adjacentSector.calculateProbability();
-        } // else handle.setBounds(difference);
+        } else handle.setBounds(difference);
 
         prevAngle = currAngle;
         update();
@@ -61,3 +75,5 @@ function update() {
   roulette.update();
   data.update();
 }
+
+export { CLOCKWISE, COUNTERCLOCKWISE };

@@ -33,7 +33,7 @@ let spinUpDuration = DEFAULT_DURATION;
 
 const CANVAS_PADDING = 25; // px
 
-const PRECISION = 0.1;
+const PRECISION = 0.01;
 
 const colors = [];
 colors.push('#00629B');
