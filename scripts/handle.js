@@ -1,6 +1,5 @@
+import { COLLAPSED, FULL } from './adjuster.js';
 import { getRadians } from './math.js';
-import { PRECISION } from './roulette.js';
-import { CLOCKWISE, COUNTERCLOCKWISE } from './adjuster.js';
 
 let canvas = document.querySelector('canvas');
 let c = canvas.getContext('2d');
@@ -77,24 +76,30 @@ class Handle {
     c.restore();
   }
 
-  setBounds(difference) {
+  setBounds(boundType) {
     const sector = this.sector;
     const adjacentSector = this.adjacentSector;
-    const newAngle = sector.endAngle + difference;
 
-    if (newAngle - adjacentSector.endAngle > 0) {
-      sector.endAngle = adjacentSector.endAngle;
-      adjacentSector.startAngle = adjacentSector.endAngle;
-
-      sector.calculateProbability();
-      adjacentSector.calculateProbability();
-    } else if (newAngle - sector.startAngle < 0) {
+    if (boundType === COLLAPSED) {
       sector.endAngle = sector.startAngle;
       adjacentSector.startAngle = sector.startAngle;
-
-      sector.calculateProbability();
-      adjacentSector.calculateProbability();
     }
+
+    if (boundType === FULL) {
+      sector.endAngle = adjacentSector.endAngle;
+      adjacentSector.startAngle = adjacentSector.endAngle;
+    }
+
+    sector.calculateProbability();
+    adjacentSector.calculateProbability();
+  }
+
+  setSpans() {
+    const sector = this.sector;
+    const adjacentSector = this.adjacentSector;
+
+    sector.spans = adjacentSector.endAngle - sector.startAngle <= 0;
+    adjacentSector.reverseSpans = sector.spans;
   }
 
   update() {
@@ -105,56 +110,65 @@ class Handle {
     const angleOffset = getRadians(c.getTransform());
     const angle = endAngle + angleOffset;
 
+    this.setSpans();
+
     this.x = rouletteRadius * Math.cos(angle);
     this.y = rouletteRadius * Math.sin(angle);
 
     this.draw();
   }
 
-  withinBounds(currAngle, difference, direction) {
-    // direction = 0 : clockwise
-    // direction = 1 : counterclockwise
+  withinBounds(currAngle, newAngle, trueAngle) {
+    const boundProps = {};
     const sector = this.sector;
     const adjacentSector = this.adjacentSector;
 
-    // check if currAngle is out of bounds
-    // if (sector.spans) {
-    //   if (
-    //     direction == COUNTERCLOCKWISE &&
-    //     currAngle > adjacentSector.startAngle
-    //   ) {
-    //     console.log('hello');
-    //     return false;
-    //   }
-    // } else {
-    //   // if currAngle out of bounds
-    //   if (
-    //     (direction == COUNTERCLOCKWISE &&
-    //       currAngle > adjacentSector.endAngle) ||
-    //     (direction == CLOCKWISE && currAngle < sector.startAngle)
-    //   )
-    //     return false;
-    // }
+    const difference = newAngle - sector.endAngle;
 
-    let newAngle = (sector.endAngle + difference) % (2 * Math.PI);
-    if (newAngle < 0) newAngle += 2 * Math.PI;
+    // if (Math.abs(currAngle - newAngle) > PRECISION) return false;
 
-    if (
-      Math.abs(newAngle - adjacentSector.endAngle) > PRECISION &&
-      Math.abs(newAngle - sector.startAngle) > PRECISION
-    ) {
-      if (
-        (sector.spans && sector.startAngle <= sector.endAngle) ||
-        (adjacentSector.spans &&
-          adjacentSector.startAngle <= adjacentSector.endAngle)
-      )
-        return false;
-      else return true;
-    } else {
-      return direction === COUNTERCLOCKWISE
+    if (sector.spans) {
+      if (difference < -1) sector.spanning = true;
+      else if (difference > 1) sector.spanning = false;
+      adjacentSector.spanning = !sector.spanning;
+
+      boundProps.withinBounds = sector.spanning
         ? newAngle - adjacentSector.endAngle <= 0
         : newAngle - sector.startAngle >= 0;
+
+      if (!boundProps.withinBounds) {
+        if (newAngle - adjacentSector.endAngle > 0) boundProps.boundType = FULL;
+        else if (newAngle - sector.startAngle < 0)
+          boundProps.boundType = COLLAPSED;
+      }
+    } else if (sector.reverseSpans) {
+      boundProps.withinBounds = sector.spanning
+        ? trueAngle - sector.startAngle <= 0
+        : trueAngle - adjacentSector.endAngle <= 0 &&
+          trueAngle - sector.startAngle >= 0;
+
+      if (!boundProps.withinBounds) {
+        if (
+          trueAngle - sector.startAngle > 0 ||
+          trueAngle - adjacentSector.endAngle > 0
+        )
+          boundProps.boundType = FULL;
+        else if (trueAngle - sector.startAngle < 0)
+          boundProps.boundType = COLLAPSED;
+      }
+    } else {
+      boundProps.withinBounds =
+        newAngle - adjacentSector.endAngle <= 0 &&
+        newAngle - sector.startAngle >= 0;
+
+      if (!boundProps.withinBounds) {
+        if (newAngle - adjacentSector.endAngle > 0) boundProps.boundType = FULL;
+        else if (newAngle - sector.startAngle < 0)
+          boundProps.boundType = COLLAPSED;
+      }
     }
+
+    return boundProps;
   }
 }
 

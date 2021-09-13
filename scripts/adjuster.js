@@ -1,8 +1,8 @@
 import { roulette, data } from './roulette.js';
 import { getAngle } from './tracker.js';
 
-const CLOCKWISE = 0;
-const COUNTERCLOCKWISE = 1;
+const COLLAPSED = 0;
+const FULL = 1;
 
 addEventListener('mousedown', event => {
   const handles = roulette.handles;
@@ -27,33 +27,21 @@ addEventListener('mousedown', event => {
           else difference += 2 * Math.PI;
         }
 
-        let direction = difference > 0 ? COUNTERCLOCKWISE : CLOCKWISE;
-        // console.log(handle.withinBounds(currAngle, difference, direction));
+        // new endAngle for sector
+        let newAngle = (sector.endAngle + difference) % (2 * Math.PI);
+        if (newAngle < 0) newAngle += 2 * Math.PI;
+        let trueAngle = sector.endAngle + difference;
 
-        // use sector.endAngle rather than currAngle
-        // because of vertical offset
-        if (handle.withinBounds(currAngle, difference, direction)) {
-          sector.endAngle += difference;
-          console.log(sector.spans, adjacentSector.spans);
+        let boundProps = handle.withinBounds(currAngle, newAngle, trueAngle);
 
-          if (sector.endAngle > 2 * Math.PI) {
-            sector.spans = true;
-            adjacentSector.spans = false;
-          } else if (sector.endAngle < 0) {
-            sector.spans = false;
-            adjacentSector.spans = true;
-          } else if (sector.startAngle > sector.endAngle) sector.spans = true;
-          else if (adjacentSector.startAngle > adjacentSector.endAngle)
-            adjacentSector.spans = true;
-
-          sector.endAngle %= 2 * Math.PI;
-          if (sector.endAngle < 0) sector.endAngle += 2 * Math.PI;
+        if (boundProps.withinBounds) {
+          sector.endAngle = newAngle;
 
           adjacentSector.startAngle = sector.endAngle;
 
           sector.calculateProbability();
           adjacentSector.calculateProbability();
-        } else handle.setBounds(difference);
+        } else handle.setBounds(boundProps.boundType);
 
         prevAngle = currAngle;
         update();
@@ -76,4 +64,4 @@ function update() {
   data.update();
 }
 
-export { CLOCKWISE, COUNTERCLOCKWISE };
+export { COLLAPSED, FULL };
