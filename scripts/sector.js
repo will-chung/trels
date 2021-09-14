@@ -24,8 +24,6 @@ class Sector {
     this.sectorGroup = null;
 
     this.spans = false;
-    this.reverseSpans = false;
-    this.spanning = false;
   }
 
   calculateRatio() {
@@ -254,15 +252,21 @@ class Sector {
     let arcAngle;
 
     // if sector spans 0 degrees
-    if (this.spanning) arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
+    if (this.spans) arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
     else arcAngle = Math.abs(this.endAngle - this.startAngle);
 
     this.arcAngle = arcAngle;
   }
 
   calculateProbability() {
+    this.setSpans();
     this.calculateArcAngle();
     this.probability = this.arcAngle / (2 * Math.PI);
+  }
+
+  setSpans() {
+    if (this.endAngle - this.startAngle < 0) this.spans = true;
+    else if (this.endAngle - this.startAngle > 0) this.spans = false;
   }
 
   update() {

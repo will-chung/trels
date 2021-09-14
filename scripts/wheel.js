@@ -108,10 +108,6 @@ class Wheel {
     return copyWheel;
   }
 
-  draw() {
-    this.updateSectors();
-  }
-
   setSectors(sectors) {
     this.sectors = sectors;
   }
@@ -127,7 +123,7 @@ class Wheel {
   }
 
   update() {
-    this.draw();
+    this.updateSectors();
   }
 }
 

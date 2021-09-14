@@ -27,15 +27,12 @@ addEventListener('mousedown', event => {
           else difference += 2 * Math.PI;
         }
 
-        // new endAngle for sector
-        let newAngle = (sector.endAngle + difference) % (2 * Math.PI);
-        if (newAngle < 0) newAngle += 2 * Math.PI;
         let trueAngle = sector.endAngle + difference;
 
-        let boundProps = handle.withinBounds(currAngle, newAngle, trueAngle);
+        let boundProps = handle.withinBounds(currAngle, trueAngle);
 
         if (boundProps.withinBounds) {
-          sector.endAngle = newAngle;
+          sector.endAngle = boundProps.angle;
 
           adjacentSector.startAngle = sector.endAngle;
 
