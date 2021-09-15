@@ -4,6 +4,8 @@ import { clear } from './roulette.js';
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
+const ARC_ANGLE_PRECISION = 0.001;
+
 // color of sector when selected
 const selectColor = 'white';
 
@@ -24,6 +26,7 @@ class Sector {
     this.sectorGroup = null;
 
     this.spans = false;
+    this.spanning = false;
   }
 
   calculateRatio() {
@@ -252,21 +255,29 @@ class Sector {
     let arcAngle;
 
     // if sector spans 0 degrees
-    if (this.spans) arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
+    if (this.spanning) arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
     else arcAngle = Math.abs(this.endAngle - this.startAngle);
+
+    // edge case to account for precision
+    if (Math.abs(arcAngle - 2 * Math.PI) < ARC_ANGLE_PRECISION)
+      arcAngle = 2 * Math.PI;
 
     this.arcAngle = arcAngle;
   }
 
   calculateProbability() {
-    this.setSpans();
+    this.setSpanning();
     this.calculateArcAngle();
-    this.probability = this.arcAngle / (2 * Math.PI);
+    // edge case to account for precision
+    if (this.arcAngle === 2 * Math.PI) this.probability = 1;
+    else this.probability = this.arcAngle / (2 * Math.PI);
   }
 
-  setSpans() {
-    if (this.endAngle - this.startAngle < 0) this.spans = true;
-    else if (this.endAngle - this.startAngle > 0) this.spans = false;
+  setSpanning() {
+    if (this.spans) {
+      if (this.endAngle - this.startAngle < 0) this.spanning = true;
+      else if (this.endAngle - this.startAngle > 0) this.spanning = false;
+    } else this.spanning = false;
   }
 
   update() {

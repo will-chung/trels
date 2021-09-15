@@ -95,9 +95,27 @@ class Handle {
     adjacentSector.calculateProbability();
   }
 
+  setSpans() {
+    const sector = this.sector;
+    const adjacentSector = this.adjacentSector;
+
+    if (
+      adjacentSector.endAngle - sector.endAngle < 0 ||
+      sector.endAngle - sector.startAngle < 0
+    )
+      sector.spans = true;
+    else if (
+      adjacentSector.endAngle - sector.endAngle > 0 &&
+      sector.endAngle - sector.startAngle > 0
+    )
+      sector.spans = false;
+  }
+
   update() {
     const endAngle = this.sector.endAngle + (1 / 2) * Math.PI;
     const rouletteRadius = this.sector.wheel.roulette.radius;
+
+    this.setSpans();
 
     // true angle taking into account roulette rotation
     const angleOffset = getRadians(c.getTransform());
@@ -119,59 +137,29 @@ class Handle {
     if (newAngle < 0) newAngle += 2 * Math.PI;
     boundProps.angle = newAngle;
 
-    const difference = Math.abs(trueAngle - sector.endAngle);
-    const prevArcAngle = sector.arcAngle;
-    let newArcAngle;
-    if (sector.spans) newArcAngle = newAngle + 2 * Math.PI - sector.startAngle;
-    else newArcAngle = Math.abs(newAngle - sector.startAngle);
-
-    if (newAngle - sector.startAngle < 0) {
-      boundProps.withinBounds = false;
-      boundProps.boundType = COLLAPSED;
-    } else boundProps.withinBounds = true;
-
-    // if (Math.abs(currAngle - newAngle) > PRECISION) return false;
-
-    // if (sector.spans) {
-    //   if (difference < -1) sector.spanning = true;
-    //   else if (difference > 1) sector.spanning = false;
-    //   adjacentSector.spanning = !sector.spanning;
-
-    //   boundProps.withinBounds = sector.spanning
-    //     ? newAngle - adjacentSector.endAngle <= 0
-    //     : newAngle - sector.startAngle >= 0;
-
-    //   if (!boundProps.withinBounds) {
-    //     if (newAngle - adjacentSector.endAngle > 0) boundProps.boundType = FULL;
-    //     else if (newAngle - sector.startAngle < 0)
-    //       boundProps.boundType = COLLAPSED;
-    //   }
-    // } else if (sector.reverseSpans) {
-    //   boundProps.withinBounds = sector.spanning
-    //     ? trueAngle - sector.startAngle <= 0
-    //     : trueAngle - adjacentSector.endAngle <= 0 &&
-    //       trueAngle - sector.startAngle >= 0;
-
-    //   if (!boundProps.withinBounds) {
-    //     if (
-    //       trueAngle - sector.startAngle > 0 ||
-    //       trueAngle - adjacentSector.endAngle > 0
-    //     )
-    //       boundProps.boundType = FULL;
-    //     else if (trueAngle - sector.startAngle < 0)
-    //       boundProps.boundType = COLLAPSED;
-    //   }
-    // } else {
-    //   boundProps.withinBounds =
-    //     newAngle - adjacentSector.endAngle <= 0 &&
-    //     newAngle - sector.startAngle >= 0;
-
-    //   if (!boundProps.withinBounds) {
-    //     if (newAngle - adjacentSector.endAngle > 0) boundProps.boundType = FULL;
-    //     else if (newAngle - sector.startAngle < 0)
-    //       boundProps.boundType = COLLAPSED;
-    //   }
-    // }
+    // TODO: further testing
+    if (sector.spans) {
+      if (sector.spanning) {
+        if (trueAngle - adjacentSector.endAngle > 0) {
+          boundProps.withinBounds = false;
+          boundProps.boundType = FULL;
+        } else boundProps.withinBounds = true;
+      } else {
+        if (trueAngle - sector.startAngle < 0) {
+          boundProps.withinBounds = false;
+          boundProps.boundType = COLLAPSED;
+        } else boundProps.withinBounds = true;
+      }
+    } else {
+      // only works if sector does not span
+      if (trueAngle - sector.startAngle < 0) {
+        boundProps.withinBounds = false;
+        boundProps.boundType = COLLAPSED;
+      } else if (trueAngle - adjacentSector.endAngle > 0) {
+        boundProps.withinBounds = false;
+        boundProps.boundType = FULL;
+      } else boundProps.withinBounds = true;
+    }
 
     return boundProps;
   }
