@@ -1,4 +1,4 @@
-import { PRECISION } from './roulette.js';
+import { roulette, PRECISION } from './roulette.js';
 import { COLLAPSED, FULL } from './adjuster.js';
 import { getRadians } from './math.js';
 
@@ -125,6 +125,18 @@ class Handle {
     this.y = rouletteRadius * Math.sin(angle);
 
     this.draw();
+  }
+
+  updatePosition() {
+    const handles = roulette.handles;
+    const index = handles.indexOf(this);
+    let adjacentHandle;
+
+    if (index !== handles.length - 1) {
+      adjacentHandle = handles[index + 1];
+    } else adjacentHandle = handles[0];
+
+    this.adjacentSector = adjacentHandle.sector;
   }
 
   withinBounds(currAngle, trueAngle) {

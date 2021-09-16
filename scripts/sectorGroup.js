@@ -16,7 +16,7 @@ class SectorGroup {
     if (sector.wheel.level === 0) angleRange = 2 * Math.PI;
     else angleRange = this.root.arcAngle;
 
-    // insert new sector next to selected sector (counterclockwise)
+    // insert new sector next to selected sector (clockwise)
     const index = sectors.indexOf(sector);
     const newSector = sector.copy();
     sectors.splice(index, 0, newSector);
@@ -36,6 +36,12 @@ class SectorGroup {
 
       currAngle = sector.endAngle;
     }
+
+    // update handles
+    for (const handle of roulette.handles) {
+      handle.updatePosition();
+    }
+    console.log(roulette.handles);
 
     // re-render and update data
     roulette.update();
