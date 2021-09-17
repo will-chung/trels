@@ -1,12 +1,13 @@
-import { randomValueInRange, randomValueInArray, getRadians } from './math.js';
-import { Handle } from './handle.js';
-import { Sector } from './sector.js';
 import { Data } from './data.js';
-import { Wheel } from './wheel.js';
 import { FPS } from './fps.js';
-import './adjuster.js';
-import './selector.js';
+import { Handle } from './handle.js';
+import { randomValueInRange, randomValueInArray, getRadians } from './math.js';
+import { Sector } from './sector.js';
 import { SectorGroup } from './sectorGroup.js';
+import { Wheel } from './wheel.js';
+import './adjuster.js';
+import './region.js';
+import './selector.js';
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
@@ -35,6 +36,7 @@ const CANVAS_PADDING = 25; // px
 
 const PRECISION = 0.01;
 
+// TODO: design color palette
 const colors = [];
 colors.push('#00629B');
 colors.push('#FFCD00');
@@ -75,14 +77,6 @@ document.getElementById('btnInvert').addEventListener('click', () => {
 document.getElementById('btnSimplify').addEventListener('click', () => {
   roulette.simplify();
 });
-
-document.getElementById('btnInsertSector').onclick = () => {
-  roulette.insertSector();
-};
-
-document.getElementById('btnRemoveSector').onclick = () => {
-  roulette.removeSector();
-};
 
 document.getElementById('btnRandom').addEventListener('click', () => {
   roulette.random();
@@ -132,17 +126,24 @@ class Roulette {
   }
 
   insertSector() {
-    // current selected sector
+    // currently selected sector
     const sector = this.selectedSector;
     const sectorGroup = sector.sectorGroup;
 
-    // TODO: error handling
     if (sector) sectorGroup.insert(sector);
 
-    // this.updateSectorGroups();
+    this.updateSectorGroups();
   }
 
-  removeSector() {}
+  removeSector() {
+    // currently selected sector
+    const sector = this.selectedSector;
+    const sectorGroup = sector.sectorGroup;
+
+    if (sector) sectorGroup.remove(sector);
+
+    this.updateSectorGroups();
+  }
 
   random() {
     const angle = Math.random() * (2 * Math.PI);
@@ -349,12 +350,13 @@ class Roulette {
   updateSectorGroups() {
     // innermost sectors
     const roots = this.wheels[0].sectors;
+    this.sectorGroups = [];
 
     for (const sector of roots) {
-      if (!sector.sectorGroup || sector.sectorGroup.root !== sector) {
+      if (!sector.sectorGroup || sector.sectorGroup.root !== sector)
         sector.sectorGroup = new SectorGroup(sector);
-        this.sectorGroups.push(sector.sectorGroup);
-      }
+
+      this.sectorGroups.push(sector.sectorGroup);
       this.#extract(sector);
     }
 
@@ -503,6 +505,43 @@ class Roulette {
       Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2)
     );
     return distance;
+  }
+
+  setSectorSize(type, value) {
+    const sector = this.selectedSector;
+
+    if (sector) {
+      const sectorGroup = sector.sectorGroup;
+      let size, adjacentSize;
+      switch (type) {
+        case 'probability':
+          size = 2 * Math.PI * value;
+          adjacentSize = (2 * Math.PI - size) / this.sectorGroups.length - 1;
+          break;
+        case 'conditional':
+          if (sector.wheel.level === 0) {
+            size = 2 * Math.PI * value;
+            adjacentSize = (2 * Math.PI - size) / this.sectorGroups.length - 1;
+          } else {
+            const precedingGroup = sectorGroup.getSectorGroup(sector);
+            const arcAngle = precedingGroup.root.arcAngle;
+
+            size = arcAngle * value;
+            adjacentSize =
+              (arcAngle - size) /
+                precedingGroup.getSectorWheel(sector).sectors.length -
+              1;
+          }
+          break;
+        case 'ratio':
+          break;
+      }
+
+      sectorGroup.setSize(type, size);
+      for (const group of this.sectorGroups) {
+        if (sectorGroup !== group) group.setSize(type, adjacentSize);
+      }
+    }
   }
 
   update() {

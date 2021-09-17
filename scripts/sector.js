@@ -1,10 +1,11 @@
-import { getRadians } from './math.js';
+import { chordLength, getRadians } from './math.js';
 import { clear } from './roulette.js';
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
 const ARC_ANGLE_PRECISION = 0.001;
+const LABEL_PADDING = 5;
 
 // color of sector when selected
 const selectColor = 'white';
@@ -27,10 +28,12 @@ class Sector {
 
     this.spans = false;
     this.spanning = false;
+
+    this.maxLabel = false;
   }
 
   calculateRatio() {
-    const sectors = this.sectorGroup.getSectorWheel(this);
+    const sectors = this.sectorGroup.getSectorWheel(this).sectors;
     const startAngle = sectors[0].startAngle;
     const endAngle = sectors[sectors.length - 1].endAngle;
     const arcAngle = endAngle - startAngle;
@@ -170,6 +173,16 @@ class Sector {
     c.font = 'bold 32px sans-serif';
     let offset = c.measureText(this.value).width / 2;
 
+    // length of chord that goes parallel through label
+    const maxWidth = chordLength(wheel.outerRadius, midRadius - HEIGHT);
+
+    let fontSize = 32;
+    while (c.measureText(this.value).width >= maxWidth - LABEL_PADDING) {
+      fontSize--;
+      c.font = `bold ${fontSize}px sans-serif`;
+      offset = c.measureText(this.value).width / 2;
+    }
+
     c.save();
     c.rotate(midAngle);
     c.translate(-offset, midRadius - HEIGHT);
@@ -278,6 +291,11 @@ class Sector {
       if (this.endAngle - this.startAngle < 0) this.spanning = true;
       else if (this.endAngle - this.startAngle > 0) this.spanning = false;
     } else this.spanning = false;
+  }
+
+  setValue(value) {
+    this.value = value;
+    this.update();
   }
 
   update() {
