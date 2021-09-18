@@ -28,7 +28,7 @@ value.oninput = () => {
 size.oninput = () => {
   const type = sizeSelect.value;
 
-  roulette.setSize(type, size.value);
+  roulette.setSectorSize(type, size.value);
 };
 
 color.onchange = () => {};

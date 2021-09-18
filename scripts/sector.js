@@ -23,17 +23,51 @@ class Sector {
 
     this.arcAngle = Math.abs(endAngle - startAngle);
     this.probability = this.arcAngle / (2 * Math.PI);
+    this.conditionalProb;
     this.ratio;
     this.sectorGroup = null;
 
     this.spans = false;
     this.spanning = false;
+  }
 
-    this.maxLabel = false;
+  adjustAngles() {
+    // ensure 0 <= angle <= 2*Math.PI
+    if (this.startAngle < 0) this.startAngle += 2 * Math.PI;
+    if (this.startAngle > 2 * Math.PI) this.startAngle %= 2 * Math.PI;
+    if (this.endAngle < 0) this.endAngle += 2 * Math.PI;
+    if (this.endAngle > 2 * Math.PI) this.endAngle %= 2 * Math.PI;
+  }
+
+  calculateArcAngle() {
+    let arcAngle;
+
+    // if sector spans 0 degrees
+    if (this.spanning) arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
+    else arcAngle = Math.abs(this.endAngle - this.startAngle);
+
+    // edge case to account for precision
+    if (Math.abs(arcAngle - 2 * Math.PI) < ARC_ANGLE_PRECISION)
+      arcAngle = 2 * Math.PI;
+
+    this.arcAngle = arcAngle;
+  }
+
+  calculateProbability() {
+    this.setSpanning();
+    this.calculateArcAngle();
+    // edge case to account for precision
+    if (this.arcAngle === 2 * Math.PI) this.probability = 1;
+    else this.probability = this.arcAngle / (2 * Math.PI);
   }
 
   calculateRatio() {
-    const sectors = this.sectorGroup.getSectorWheel(this).sectors;
+    const precedingGroup = this.sectorGroup.getPrecedingGroup(this);
+
+    let sectors;
+    if (!precedingGroup) sectors = this.wheel.sectors;
+    else sectors = precedingGroup.getSectorWheel(this).sectors;
+
     const startAngle = sectors[0].startAngle;
     const endAngle = sectors[sectors.length - 1].endAngle;
     const arcAngle = endAngle - startAngle;
@@ -41,6 +75,53 @@ class Sector {
     this.ratio = this.arcAngle / (arcAngle / sectors.length);
   }
 
+  contains(x, y) {
+    const roulette = this.wheel.roulette;
+    const wheel = this.wheel;
+
+    let startAngle = this.startAngle + (1 / 2) * Math.PI;
+    let endAngle = this.endAngle + (1 / 2) * Math.PI;
+
+    // ensure 0 <= angle <= 2*Math.PI
+    if (startAngle < 0) startAngle += 2 * Math.PI;
+    if (startAngle > 2 * Math.PI) startAngle %= 2 * Math.PI;
+    if (endAngle < 0) endAngle += 2 * Math.PI;
+    if (endAngle > 2 * Math.PI) endAngle %= 2 * Math.PI;
+
+    // absolute coordinates of wheel center
+    let rouletteCenter = {
+      x: roulette.absX,
+      y: roulette.absY,
+    };
+
+    let distance = Math.sqrt(
+      Math.pow(x - rouletteCenter.x, 2) + Math.pow(y - rouletteCenter.y, 2)
+    );
+    if (wheel.innerRadius <= distance && distance <= wheel.outerRadius) {
+      let adjacent = x - rouletteCenter.x;
+      let theta = Math.acos(adjacent / distance);
+
+      if (y > rouletteCenter.y) {
+        theta = 2 * Math.PI - theta;
+      }
+      // align with current wheel angle
+      theta -= getRadians(c.getTransform());
+      if (theta < 0) {
+        theta += 2 * Math.PI;
+      }
+
+      if (endAngle < startAngle) {
+        if (theta >= startAngle) {
+          return theta >= endAngle;
+        } else {
+          return theta <= endAngle;
+        }
+      } else {
+        return startAngle <= theta && theta <= endAngle;
+      }
+    }
+    return false;
+  }
   copy() {
     const copySector = new Sector(
       this.value,
@@ -55,18 +136,10 @@ class Sector {
     return copySector;
   }
 
-  fit(sectors) {
-    const arcAngle = this.arcAngle / sectors.length;
-
-    for (let i = 0; i < sectors.length; i++) {
-      const sector = sectors[i];
-      const startAngle = arcAngle * i + this.startAngle;
-      const endAngle = arcAngle * (i + 1) + this.startAngle;
-
-      sector.startAngle = startAngle;
-      sector.endAngle = endAngle;
-      sector.calculateProbability();
-    }
+  deselect() {
+    clear();
+    this.color = this.defaultColor;
+    this.wheel.roulette.update();
   }
 
   draw() {
@@ -155,6 +228,20 @@ class Sector {
     if (label) this.label();
   }
 
+  fit(sectors) {
+    const arcAngle = this.arcAngle / sectors.length;
+
+    for (let i = 0; i < sectors.length; i++) {
+      const sector = sectors[i];
+      const startAngle = arcAngle * i + this.startAngle;
+      const endAngle = arcAngle * (i + 1) + this.startAngle;
+
+      sector.startAngle = startAngle;
+      sector.endAngle = endAngle;
+      sector.calculateProbability();
+    }
+  }
+
   label() {
     // vertical offset
     let startAngle = this.startAngle + (1 / 2) * Math.PI;
@@ -196,94 +283,49 @@ class Sector {
     c.restore();
   }
 
-  contains(x, y) {
-    const roulette = this.wheel.roulette;
-    const wheel = this.wheel;
-
-    let startAngle = this.startAngle + (1 / 2) * Math.PI;
-    let endAngle = this.endAngle + (1 / 2) * Math.PI;
-
-    // ensure 0 <= angle <= 2*Math.PI
-    if (startAngle < 0) startAngle += 2 * Math.PI;
-    if (startAngle > 2 * Math.PI) startAngle %= 2 * Math.PI;
-    if (endAngle < 0) endAngle += 2 * Math.PI;
-    if (endAngle > 2 * Math.PI) endAngle %= 2 * Math.PI;
-
-    // absolute coordinates of wheel center
-    let rouletteCenter = {
-      x: roulette.absX,
-      y: roulette.absY,
-    };
-
-    let distance = Math.sqrt(
-      Math.pow(x - rouletteCenter.x, 2) + Math.pow(y - rouletteCenter.y, 2)
-    );
-    if (wheel.innerRadius <= distance && distance <= wheel.outerRadius) {
-      let adjacent = x - rouletteCenter.x;
-      let theta = Math.acos(adjacent / distance);
-
-      if (y > rouletteCenter.y) {
-        theta = 2 * Math.PI - theta;
-      }
-      // align with current wheel angle
-      theta -= getRadians(c.getTransform());
-      if (theta < 0) {
-        theta += 2 * Math.PI;
-      }
-
-      if (endAngle < startAngle) {
-        if (theta >= startAngle) {
-          return theta >= endAngle;
-        } else {
-          return theta <= endAngle;
-        }
-      } else {
-        return startAngle <= theta && theta <= endAngle;
-      }
-    }
-    return false;
-  }
-
   select() {
     clear();
     this.color = selectColor;
     this.wheel.roulette.update();
   }
 
-  deselect() {
-    clear();
-    this.color = this.defaultColor;
-    this.wheel.roulette.update();
+  setConditionalProbability(probability) {
+    const sectorGroup = this.sectorGroup;
+    const precedingGroup = sectorGroup.getPrecedingGroup(this);
+
+    let angleRange;
+    if (!precedingGroup) angleRange = 2 * Math.PI;
+    else angleRange = precedingGroup.root.arcAngle;
+
+    const newArcAngle = angleRange * probability;
+
+    if (!precedingGroup) sectorGroup.replace(this, newArcAngle);
+    else precedingGroup.replace(this, newArcAngle);
   }
 
-  adjustAngles() {
-    // ensure 0 <= angle <= 2*Math.PI
-    if (this.startAngle < 0) this.startAngle += 2 * Math.PI;
-    if (this.startAngle > 2 * Math.PI) this.startAngle %= 2 * Math.PI;
-    if (this.endAngle < 0) this.endAngle += 2 * Math.PI;
-    if (this.endAngle > 2 * Math.PI) this.endAngle %= 2 * Math.PI;
+  setProbability(probability) {
+    const sectorGroup = this.sectorGroup;
+    const precedingGroup = sectorGroup.getPrecedingGroup(this);
+
+    let maxProbability;
+    if (!precedingGroup) maxProbability = 1;
+    else maxProbability = precedingGroup.root.probability;
+
+    if (probability > maxProbability) {
+      // TODO: error handling
+    } else {
+      const newArcAngle = 2 * Math.PI * probability;
+      if (!precedingGroup) sectorGroup.replace(this, newArcAngle);
+      else precedingGroup.replace(this, newArcAngle);
+    }
   }
 
-  calculateArcAngle() {
-    let arcAngle;
+  setRatio() {}
 
-    // if sector spans 0 degrees
-    if (this.spanning) arcAngle = this.endAngle + 2 * Math.PI - this.startAngle;
-    else arcAngle = Math.abs(this.endAngle - this.startAngle);
-
-    // edge case to account for precision
-    if (Math.abs(arcAngle - 2 * Math.PI) < ARC_ANGLE_PRECISION)
-      arcAngle = 2 * Math.PI;
-
-    this.arcAngle = arcAngle;
-  }
-
-  calculateProbability() {
-    this.setSpanning();
-    this.calculateArcAngle();
-    // edge case to account for precision
-    if (this.arcAngle === 2 * Math.PI) this.probability = 1;
-    else this.probability = this.arcAngle / (2 * Math.PI);
+  setSize(size, startAngle) {
+    if (startAngle !== undefined) this.startAngle = startAngle;
+    this.endAngle = this.startAngle + size;
+    this.calculateProbability();
   }
 
   setSpanning() {

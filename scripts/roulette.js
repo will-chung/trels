@@ -356,30 +356,18 @@ class Roulette {
       if (!sector.sectorGroup || sector.sectorGroup.root !== sector)
         sector.sectorGroup = new SectorGroup(sector);
 
+      sector.sectorGroup.extract(sector);
       this.sectorGroups.push(sector.sectorGroup);
-      this.#extract(sector);
     }
 
     // update all ratios
+    this.updateRatios();
+  }
+
+  updateRatios() {
     for (const wheel of this.wheels) {
       for (const sector of wheel.sectors) {
         sector.calculateRatio();
-      }
-    }
-  }
-
-  #extract(sector) {
-    const startAngle = sector.startAngle;
-    const endAngle = sector.endAngle;
-    const sectorGroup = sector.sectorGroup;
-
-    // extract sectors belonging to sectorGroup
-    for (let i = 1; i < this.wheels.length; i++) {
-      const sectors = this.wheels[i].sectors;
-      for (const sector of sectors) {
-        if (startAngle <= sector.startAngle && sector.endAngle <= endAngle) {
-          sectorGroup.push(sector);
-        }
       }
     }
   }
@@ -511,36 +499,24 @@ class Roulette {
     const sector = this.selectedSector;
 
     if (sector) {
-      const sectorGroup = sector.sectorGroup;
-      let size, adjacentSize;
       switch (type) {
         case 'probability':
-          size = 2 * Math.PI * value;
-          adjacentSize = (2 * Math.PI - size) / this.sectorGroups.length - 1;
+          sector.setProbability(value);
           break;
         case 'conditional':
-          if (sector.wheel.level === 0) {
-            size = 2 * Math.PI * value;
-            adjacentSize = (2 * Math.PI - size) / this.sectorGroups.length - 1;
-          } else {
-            const precedingGroup = sectorGroup.getSectorGroup(sector);
-            const arcAngle = precedingGroup.root.arcAngle;
-
-            size = arcAngle * value;
-            adjacentSize =
-              (arcAngle - size) /
-                precedingGroup.getSectorWheel(sector).sectors.length -
-              1;
-          }
+          sector.setConditionalProbability(value);
           break;
         case 'ratio':
+          sector.setRatio(value);
           break;
       }
 
-      sectorGroup.setSize(type, size);
-      for (const group of this.sectorGroups) {
-        if (sectorGroup !== group) group.setSize(type, adjacentSize);
-      }
+      // update all ratios
+      this.updateRatios();
+
+      // re-render and update data
+      this.update();
+      data.update();
     }
   }
 
