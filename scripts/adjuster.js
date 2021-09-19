@@ -1,3 +1,4 @@
+import { setSize } from './region.js';
 import { roulette, data } from './roulette.js';
 import { getAngle } from './tracker.js';
 
@@ -35,9 +36,6 @@ addEventListener('mousedown', event => {
           sector.endAngle = boundProps.angle;
 
           adjacentSector.startAngle = sector.endAngle;
-
-          sector.calculateProbability();
-          adjacentSector.calculateProbability();
         } else handle.setBounds(boundProps.boundType);
 
         prevAngle = currAngle;
@@ -59,6 +57,7 @@ addEventListener('mousedown', event => {
 function update() {
   roulette.update();
   data.update();
+  if (roulette.selectedSector) setSize(roulette.selectedSector);
 }
 
 export { COLLAPSED, FULL };

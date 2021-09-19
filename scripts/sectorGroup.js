@@ -57,11 +57,17 @@ class SectorGroup {
       handles.splice(index, 0, new Handle(newSector, sector, 10));
     }
 
+    let totalRatio = 0;
+    for (const sector of sectors) {
+      totalRatio += sector.ratio;
+    }
+
+    const base = angleRange / totalRatio;
+
     // fit sectors into angleRange
     let currAngle = sectors[0].startAngle;
     for (const sector of sectors) {
-      const ratio = sector.ratio;
-      const arcAngle = (angleRange / sectors.length) * ratio;
+      const arcAngle = base * sector.ratio;
 
       sector.startAngle = currAngle;
       sector.endAngle = currAngle + arcAngle;
@@ -77,7 +83,7 @@ class SectorGroup {
         rouletteSectors.splice(
           sectorWheel.lowerIndex,
           sectorWheel.count,
-          sectors
+          ...sectors
         );
       }
 
@@ -147,6 +153,7 @@ class SectorGroup {
   }
 
   // TODO: make new class for SectorWheel?
+  // TODO: optimize
   getSectorWheel(location) {
     const sectorWheel = {};
     sectorWheel.sectors = [];
@@ -187,7 +194,7 @@ class SectorGroup {
         break;
       }
     }
-    sectorWheel.count = sectorWheel.upperIndex - sectorWheel.lowerIndex;
+    sectorWheel.count = sectorWheel.upperIndex - sectorWheel.lowerIndex + 1;
 
     return sectorWheel;
   }
@@ -197,7 +204,6 @@ class SectorGroup {
 
     // fit new sector to sectorWheel
     this.fit(sectorWheel, sector);
-    console.log(roulette);
   }
 
   push(sector) {
@@ -214,7 +220,6 @@ class SectorGroup {
 
     // unfit sector from sectorWheel
     this.unfit(sectorWheel, sector);
-    console.log(roulette);
   }
 
   replace(sector, newArcAngle) {

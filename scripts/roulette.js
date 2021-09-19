@@ -125,12 +125,37 @@ class Roulette {
     this.spinningUp = false;
   }
 
+  attachHandles() {
+    this.handles = [];
+
+    const outermostWheel = this.wheels[this.wheels.length - 1];
+    const outermostSectors = outermostWheel.sectors;
+
+    let index = 0;
+    let currSector = outermostSectors[index];
+    let adjacentSector = outermostSectors[index + 1];
+
+    if (!adjacentSector) return;
+
+    while (adjacentSector) {
+      this.handles.push(new Handle(currSector, adjacentSector, 10));
+
+      currSector = outermostSectors[++index];
+      adjacentSector = outermostSectors[index + 1];
+    }
+    this.handles.push(new Handle(currSector, outermostSectors[0], 10));
+  }
+
   insertSector() {
     // currently selected sector
     const sector = this.selectedSector;
     const sectorGroup = sector.sectorGroup;
+    const precedingGroup = sectorGroup.getPrecedingGroup(sector);
 
-    if (sector) sectorGroup.insert(sector);
+    if (sector) {
+      if (!precedingGroup) sectorGroup.insert(sector);
+      else precedingGroup.insert(sector);
+    }
 
     this.updateSectorGroups();
   }
@@ -139,8 +164,12 @@ class Roulette {
     // currently selected sector
     const sector = this.selectedSector;
     const sectorGroup = sector.sectorGroup;
+    const precedingGroup = sectorGroup.getPrecedingGroup(sector);
 
-    if (sector) sectorGroup.remove(sector);
+    if (sector) {
+      if (!precedingGroup) sectorGroup.remove(sector);
+      else precedingGroup.remove(sector);
+    }
 
     this.updateSectorGroups();
   }
@@ -148,6 +177,7 @@ class Roulette {
   random() {
     const angle = Math.random() * (2 * Math.PI);
     c.rotate(angle);
+    this.update();
     this.record();
   }
 
@@ -168,24 +198,61 @@ class Roulette {
     data.update();
   }
 
-  // TODO: set correct level
   insert() {
-    const index = this.selectedWheel.level;
     const insertWheel = this.selectedWheel.copy();
-    insertWheel.level = this.wheels.length;
-    this.wheels.splice(index + 1, 0, insertWheel);
+    const index = this.selectedWheel.level;
+    insertWheel.level = index + 1;
+
+    this.insertWheel(insertWheel, index + 1);
+    this.update();
   }
 
-  // TODO: set correct level
+  insertWheel(wheel, index) {
+    this.wheels.splice(index, 0, wheel);
+    this.fitWheels();
+    this.updateWheelLevels();
+  }
+
+  fitWheels() {
+    const wheels = this.wheels;
+    const radius = this.radius;
+    const distance = radius / wheels.length;
+
+    let currRadius = 0;
+    let index = 0;
+    let currWheel = wheels[index];
+    while (currWheel) {
+      currWheel.innerRadius = currRadius;
+      currWheel.outerRadius = currWheel.innerRadius + distance;
+
+      currRadius += distance;
+      // increment index and get next wheel
+      currWheel = wheels[++index];
+    }
+  }
+
   remove() {
-    if (this.selectedWheel.level == 0) return;
+    // TODO: error handling
+    if (this.wheels.length === 1) return;
     const index = this.selectedWheel.level;
+
+    this.removeWheel(index);
+    this.update();
+    data.update();
+  }
+
+  removeWheel(index) {
     this.wheels.splice(index, 1);
+    this.fitWheels();
+    this.updateWheelLevels();
   }
 
   total() {
     const outermostWheel = this.wheels[this.wheels.length - 1];
     const totalWheel = outermostWheel.copy();
+
+    totalWheel.roulette = this;
+    totalWheel.level = outermostWheel.level + 1;
 
     totalWheel.sectors.forEach(sector => {
       const startAngle = sector.startAngle;
@@ -208,20 +275,31 @@ class Roulette {
       }
     });
 
-    this.wheels.push(totalWheel);
+    this.insertWheel(totalWheel, totalWheel.level);
+
+    this.update();
     data.update();
   }
 
-  // TODO: set correct level
   invert() {
-    this.wheels.reverse();
-    data.upate();
+    this.reverseWheels();
+    this.update();
+    data.update();
+  }
+
+  reverseWheels() {
+    const wheels = this.wheels;
+    wheels.reverse();
+    this.fitWheels();
   }
 
   simplify() {
     this.wheels.forEach(wheel => {
       wheel.combine();
     });
+    console.log(this);
+
+    this.update();
   }
 
   repeat() {
@@ -253,7 +331,7 @@ class Roulette {
         repeatWheel.addSector(sector);
       });
 
-      // if next sector has same arcAngle
+      // optimization while next sector has same arcAngle
       while (
         i + 1 < outermostSectors.length &&
         Math.abs(outermostSectors[i + 1].arcAngle - currSector.arcAngle) <
@@ -271,7 +349,9 @@ class Roulette {
       }
     }
 
-    this.wheels.push(repeatWheel);
+    this.insertWheel(repeatWheel, repeatWheel.level);
+
+    this.update();
     data.update();
   }
 
@@ -287,6 +367,7 @@ class Roulette {
   }
 
   draw() {
+    this.updateSectorGroups();
     this.updateWheels();
     this.updateHandles();
 
@@ -373,6 +454,8 @@ class Roulette {
   }
 
   updateHandles() {
+    this.attachHandles();
+
     this.handles.forEach(handle => {
       handle.update();
     });
@@ -472,7 +555,6 @@ class Roulette {
         if (sector.contains(pointerCoordinates.x, pointerCoordinates.y)) {
           this.result = sector.value;
           data.add(this.result);
-          console.log(data);
         }
       });
     });
@@ -520,6 +602,39 @@ class Roulette {
     }
   }
 
+  split() {
+    const wheels = this.wheels;
+    const sectorGroups = this.sectorGroups;
+
+    // currIndex for each wheel
+    const wheelIndices = [];
+    for (let i = 1; i < wheels.length; i++) {
+      wheelIndices.push(0);
+    }
+
+    // iterate through each sectorGroup to split along edges
+    for (const group of sectorGroups) {
+      const startAngle = group.root.startAngle;
+      const endAngle = group.root.endAngle;
+      for (let i = 1; i < wheels.length; i++) {
+        const sectors = wheels[i];
+        let sector = sectors[wheelIndices[i - 1]];
+        let overshot = false;
+
+        while (sector && !overshot) {
+          if (sector.startAngle < startAngle && startAngle < sector.endAngle)
+            sector.split(startAngle);
+          if (sector.startAngle < endAngle && endAngle < sector.endAngle)
+            sector.split(endAngle);
+          if (sector.startAngle >= endAngle) overshot = true;
+
+          // increment wheel index & get next sector
+          sector = sectors[++wheelIndices[i - 1]];
+        }
+      }
+    }
+  }
+
   update() {
     /*
      * Two stages of spinning:
@@ -542,6 +657,13 @@ class Roulette {
 
     clear();
     this.draw();
+  }
+
+  updateWheelLevels() {
+    for (let i = 0; i < this.wheels.length; i++) {
+      const wheel = this.wheels[i];
+      wheel.level = i;
+    }
   }
 }
 
@@ -582,7 +704,6 @@ function initializeRoulette() {
   initializeHandles();
 
   roulette.update();
-  roulette.updateSectorGroups();
 
   data = new Data(roulette);
   data.update();

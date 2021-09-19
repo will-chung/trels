@@ -8,7 +8,6 @@ const PRECISION = 0.0000001;
 
 class Wheel {
   constructor(sectors) {
-    // TODO: singleton design
     this.roulette;
     this.level;
 
@@ -20,10 +19,9 @@ class Wheel {
   }
 
   combine() {
-    const combine = [];
     let region = [];
 
-    if (this.level != 0) {
+    if (this.level !== 0) {
       const prevWheel = this.roulette.wheels[this.level - 1];
       prevWheel.sectors.forEach(sector => {
         region = [];

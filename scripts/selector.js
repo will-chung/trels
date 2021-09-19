@@ -1,3 +1,4 @@
+import { setSize, setValue } from './region.js';
 import { roulette } from './roulette.js';
 
 addEventListener('mousedown', event => {
@@ -15,6 +16,8 @@ addEventListener('mousedown', event => {
         ) {
           roulette.reset();
           roulette.select(sector);
+          setValue(sector.value);
+          setSize(sector);
         }
       });
     });

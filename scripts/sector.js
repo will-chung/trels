@@ -1,5 +1,5 @@
 import { chordLength, getRadians } from './math.js';
-import { clear } from './roulette.js';
+import { clear, data } from './roulette.js';
 
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
@@ -53,6 +53,17 @@ class Sector {
     this.arcAngle = arcAngle;
   }
 
+  calculateConditionalProb() {
+    const sectorGroup = this.sectorGroup;
+    const precedingGroup = sectorGroup.getPrecedingGroup(this);
+
+    let arcAngle;
+    if (!precedingGroup) arcAngle = 2 * Math.PI;
+    else arcAngle = precedingGroup.root.arcAngle;
+
+    this.conditionalProb = this.arcAngle / arcAngle;
+  }
+
   calculateProbability() {
     this.setSpanning();
     this.calculateArcAngle();
@@ -68,11 +79,13 @@ class Sector {
     if (!precedingGroup) sectors = this.wheel.sectors;
     else sectors = precedingGroup.getSectorWheel(this).sectors;
 
-    const startAngle = sectors[0].startAngle;
-    const endAngle = sectors[sectors.length - 1].endAngle;
-    const arcAngle = endAngle - startAngle;
+    let arcAngle;
+    if (!precedingGroup) arcAngle = 2 * Math.PI;
+    else arcAngle = precedingGroup.root.arcAngle;
 
-    this.ratio = this.arcAngle / (arcAngle / sectors.length);
+    const base = arcAngle / sectors.length;
+
+    this.ratio = this.arcAngle / base;
   }
 
   contains(x, y) {
@@ -243,6 +256,7 @@ class Sector {
   }
 
   label() {
+    // TODO: dynamic resizing when adding wheels
     // vertical offset
     let startAngle = this.startAngle + (1 / 2) * Math.PI;
     let endAngle = this.endAngle + (1 / 2) * Math.PI;
@@ -290,6 +304,8 @@ class Sector {
   }
 
   setConditionalProbability(probability) {
+    this.conditionalProb = probability;
+
     const sectorGroup = this.sectorGroup;
     const precedingGroup = sectorGroup.getPrecedingGroup(this);
 
@@ -304,6 +320,8 @@ class Sector {
   }
 
   setProbability(probability) {
+    this.probability = probability;
+
     const sectorGroup = this.sectorGroup;
     const precedingGroup = sectorGroup.getPrecedingGroup(this);
 
@@ -315,12 +333,39 @@ class Sector {
       // TODO: error handling
     } else {
       const newArcAngle = 2 * Math.PI * probability;
+
       if (!precedingGroup) sectorGroup.replace(this, newArcAngle);
       else precedingGroup.replace(this, newArcAngle);
     }
   }
 
-  setRatio() {}
+  setRatio(ratio) {
+    this.ratio = ratio;
+
+    const sectorGroup = this.sectorGroup;
+    const precedingGroup = sectorGroup.getPrecedingGroup(this);
+
+    let sectors, arcAngle;
+    if (!precedingGroup) {
+      sectors = this.wheel.sectors;
+      arcAngle = 2 * Math.PI;
+    } else {
+      sectors = precedingGroup.getSectorWheel(this).sectors;
+      arcAngle = precedingGroup.root.arcAngle;
+    }
+
+    let totalRatio = 0;
+    for (const sector of sectors) {
+      if (sector !== this) totalRatio += sector.ratio;
+    }
+    totalRatio += ratio;
+
+    const base = arcAngle / totalRatio;
+    const newArcAngle = base * ratio;
+
+    if (!precedingGroup) sectorGroup.replace(this, newArcAngle);
+    else precedingGroup.replace(this, newArcAngle);
+  }
 
   setSize(size, startAngle) {
     if (startAngle !== undefined) this.startAngle = startAngle;
@@ -331,17 +376,27 @@ class Sector {
   setSpanning() {
     if (this.spans) {
       if (this.endAngle - this.startAngle < 0) this.spanning = true;
-      else if (this.endAngle - this.startAngle > 0) this.spanning = false;
+      else this.spanning = false;
     } else this.spanning = false;
   }
 
   setValue(value) {
     this.value = value;
     this.update();
+    data.update();
   }
 
+  split(angle) {}
+
   update() {
+    this.updateStatistics();
     this.draw();
+  }
+
+  updateStatistics() {
+    this.calculateProbability();
+    this.calculateConditionalProb();
+    this.calculateRatio();
   }
 }
 
