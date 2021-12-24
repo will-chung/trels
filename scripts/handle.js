@@ -1,6 +1,7 @@
 import { roulette, PRECISION } from './roulette.js';
 import { COLLAPSED, FULL } from './adjuster.js';
 import { getRadians } from './math.js';
+import { createSectorGroup, getPrecedingSector } from './sectorGroup.js';
 
 let canvas = document.querySelector('canvas');
 let c = canvas.getContext('2d');
@@ -9,6 +10,9 @@ class Handle {
   constructor(sector, adjacentSector, radius) {
     this.sector = sector;
     this.adjacentSector = adjacentSector;
+
+    this.sectorGroup = getSectorGroup(sector);
+    this.adjacentSectorGroup = getSectorGroup(adjacentSector);
 
     // vertical offset
     let endAngle = sector.endAngle + (1 / 2) * Math.PI;
@@ -19,7 +23,7 @@ class Handle {
     this.y = rouletteRadius * Math.sin(endAngle);
 
     this.radius = radius;
-    this.color = sector.color;
+    this.color = sector.defaultColor;
   }
 
   contains(x, y) {
@@ -84,10 +88,12 @@ class Handle {
     if (boundType === COLLAPSED) {
       sector.endAngle = sector.startAngle;
       adjacentSector.startAngle = sector.startAngle;
+      adjacentSector.full = true;
     }
 
     if (boundType === FULL) {
       sector.endAngle = adjacentSector.endAngle;
+      sector.full = true;
       adjacentSector.startAngle = adjacentSector.endAngle;
     }
 
@@ -139,7 +145,7 @@ class Handle {
     this.adjacentSector = adjacentHandle.sector;
   }
 
-  withinBounds(currAngle, trueAngle) {
+  withinBounds(trueAngle) {
     const boundProps = {};
     const sector = this.sector;
     const adjacentSector = this.adjacentSector;
@@ -152,18 +158,17 @@ class Handle {
     // TODO: further testing
     if (sector.spans) {
       if (sector.spanning) {
-        if (trueAngle - adjacentSector.endAngle > 0) {
+        if (trueAngle - adjacentSector.endAngle >= 0) {
           boundProps.withinBounds = false;
           boundProps.boundType = FULL;
         } else boundProps.withinBounds = true;
       } else {
-        if (trueAngle - sector.startAngle < 0) {
+        if (trueAngle - sector.startAngle <= 0) {
           boundProps.withinBounds = false;
           boundProps.boundType = COLLAPSED;
         } else boundProps.withinBounds = true;
       }
     } else {
-      // only works if sector does not span
       if (trueAngle - sector.startAngle < 0) {
         boundProps.withinBounds = false;
         boundProps.boundType = COLLAPSED;
@@ -177,4 +182,24 @@ class Handle {
   }
 }
 
-export { Handle };
+// get "deepest" sectorGroup which contains input sector
+function getSectorGroup(sector) {
+  let precedingSector = getPrecedingSector(sector);
+  let sectorGroup;
+
+  while (precedingSector) {
+    if (
+      precedingSector.startAngle === sector.startAngle ||
+      precedingSector.endAngle === sector.endAngle
+    )
+      precedingSector = getPrecedingSector(precedingSector);
+    else break;
+  }
+
+  if (precedingSector) sectorGroup = createSectorGroup(precedingSector);
+  else sectorGroup = createSectorGroup(sector);
+
+  return sectorGroup;
+}
+
+export { Handle, getSectorGroup };

@@ -18,6 +18,9 @@ class Wheel {
     this.outerRadius;
   }
 
+  /*
+   * Combine sectors of a wheel, maintaining probabilities
+   */
   combine() {
     let region = [];
 
@@ -30,21 +33,25 @@ class Wheel {
 
         // extract region corresponding to sector of prevWheel
         let i = 0;
+        // skip until start of region
         while (
           i < this.sectors.length &&
           this.sectors[i].startAngle < startAngle
         )
           i++;
+        // extraction
         while (i < this.sectors.length && this.sectors[i].endAngle < endAngle) {
           region.push(this.sectors[i]);
           i++;
         }
 
+        // extract last sector
         if (endAngle - this.sectors[i].endAngle < PRECISION) {
           region.push(this.sectors[i]);
           i++;
         }
 
+        // combine extracted region
         let startIndex = i - region.length;
         this.combineRegion(region, startIndex, region.length);
       });
@@ -54,24 +61,31 @@ class Wheel {
     }
   }
 
+  /*
+   * Combine sectors of a region, maintaining probabilities
+   */
   combineRegion(region, startIndex, deleteCount) {
-    // combine same events
-    for (let j = 0; j < region.length; j++) {
-      const sector = region[j];
-      // adjust starting angle after combining previous event
-      if (j > 0) sector.startAngle = region[j - 1].endAngle;
+    // combine same probability events
+    for (let i = 0; i < region.length; i++) {
+      const sector = region[i];
+      // adjust starting angle after combining previous region
+      if (i > 0) sector.startAngle = region[i - 1].endAngle;
       let arcAngle = sector.arcAngle;
-      for (let k = j + 1; k < region.length; k++) {
-        const currSector = region[k];
+
+      // delete all elements with same value as sector
+      for (let j = i + 1; j < region.length; j++) {
+        const currSector = region[j];
         if (currSector.value == sector.value) {
           arcAngle += currSector.arcAngle;
-          region.splice(k, 1);
-          // account for array shift
-          k--;
+          region.splice(j, 1);
+          // account for array shift caused by deletion
+          j--;
         }
       }
+
+      // replace sector with new sector representing combined events
       region.splice(
-        j,
+        i,
         1,
         new Sector(
           sector.value,
@@ -83,10 +97,13 @@ class Wheel {
       );
     }
 
-    if (region.length == 3) console.log(region);
+    // finally, replace original region with newly combined region
     this.sectors.splice(startIndex, deleteCount, ...region);
   }
 
+  /*
+   * Create a copy of the wheel
+   */
   copy() {
     const copyWheel = new Wheel();
 

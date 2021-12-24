@@ -698,8 +698,13 @@ function initializeRoulette() {
   wheel.addSector(new Sector(0, 0, Math.PI, colors[0], wheel));
   wheel.addSector(new Sector(1, Math.PI, 2 * Math.PI, colors[1], wheel));
 
+  // let wheel2 = new Wheel();
+  // wheel2.addSector(new Sector(0, 0, Math.PI, colors[0], wheel2));
+  // wheel2.addSector(new Sector(1, Math.PI, 2 * Math.PI, colors[1], wheel2));
+
   roulette = new Roulette(0, 0, radius);
   roulette.addWheel(wheel);
+  // roulette.addWheel(wheel2);
 
   initializeHandles();
 

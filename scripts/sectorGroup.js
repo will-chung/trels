@@ -1,15 +1,18 @@
 import { data, roulette } from './roulette.js';
-import { Sector } from './sector.js';
-import { Handle } from './handle.js';
+import { SectorWheel } from './sectorWheel.js';
 
 class SectorGroup {
   constructor(rootSector) {
     this.root = rootSector;
-    this.sectors = [rootSector];
+    this.sectorWheels = [];
   }
 
   contains(sector) {
-    return this.sectors.includes(sector);
+    for (const sectorWheel of this.sectors) {
+      if (sectorWheel.contains(sector)) return true;
+    }
+
+    return false;
   }
 
   extract() {
@@ -21,41 +24,28 @@ class SectorGroup {
     for (let i = level; i < roulette.wheels.length; i++) {
       const sectors = roulette.wheels[i].sectors;
       for (const sector of sectors) {
-        if (startAngle <= sector.startAngle && sector.endAngle <= endAngle) {
+        if (startAngle <= sector.startAngle && sector.endAngle <= endAngle)
           this.push(sector);
-        }
       }
     }
   }
 
+  // fill (expand) sectorGroup relative to root sector
   fill() {
-    let currLevel = this.root.wheel.level + 1;
-    let currSectors = this.getSectorWheel(currLevel);
+    let level = this.root.wheel.level + 1;
+    let currSectors = this.getSectorWheel(level);
 
-    while (currLevel < roulette.wheels.length) {
+    while (level < roulette.wheels.length) {
       this.fit(currSectors);
-      // increment currLevel & get next sectorWheel
-      currSectors = this.getSectorWheel(++currLevel);
+      // increment currLevel and get next sectorWheel
+      currSectors = this.getSectorWheel(++level);
     }
   }
 
-  fit(sectorWheel, sector) {
-    // if sector is not passed in original sectorWheel is fit to root sector
-    let angleRange;
-    if (sector.wheel.level === 0) angleRange = 2 * Math.PI;
-    else angleRange = this.root.arcAngle;
-
+  // fit sectorWheel to sectorGroup
+  fit(sectorWheel) {
+    const angleRange = this.root.arcAngle;
     const sectors = sectorWheel.sectors;
-
-    if (sector) {
-      // insert new sector next to selected sector (clockwise)
-      const index = sectors.indexOf(sector);
-      const newSector = sector.copy();
-      sectors.splice(index, 0, newSector);
-
-      const handles = roulette.handles;
-      handles.splice(index, 0, new Handle(newSector, sector, 10));
-    }
 
     let totalRatio = 0;
     for (const sector of sectors) {
@@ -71,26 +61,9 @@ class SectorGroup {
 
       sector.startAngle = currAngle;
       sector.endAngle = currAngle + arcAngle;
-      sector.calculateProbability();
+      sector.updateStatistics();
 
       currAngle = sector.endAngle;
-    }
-
-    if (sector) {
-      // update roulette sectors if not innermost wheel
-      if (sector.wheel.level !== 0) {
-        const rouletteSectors = sector.wheel.sectors;
-        rouletteSectors.splice(
-          sectorWheel.lowerIndex,
-          sectorWheel.count,
-          ...sectors
-        );
-      }
-
-      // update handles
-      for (const handle of roulette.handles) {
-        handle.updatePosition();
-      }
     }
 
     // re-render and update data
@@ -98,226 +71,133 @@ class SectorGroup {
     data.update();
   }
 
-  // necessary?
-  getLevel(level) {
-    const sectors = [];
+  getSectors() {
+    let sectors = [];
 
-    for (const sector of this.sectors) {
-      if (sector.wheel.level === level) sectors.push(sector);
+    for (const sectorWheel of this.sectorWheels) {
+      sectors.push(...sectorWheel.sectors);
     }
 
     return sectors;
   }
 
-  // get sectorGroup whose root is the sector one level below input sector
-  getPrecedingGroup(sector) {
-    const level = sector.wheel.level;
-    // if at innermost level
-    if (level === 0) return null;
+  getSectorWheel(location, isSector) {
+    let sectorWheel;
 
-    let sectorGroup;
-
-    for (const sec of this.sectors) {
-      if (
-        sec.wheel.level === level - 1 &&
-        sec.startAngle <= sector.startAngle &&
-        sector.endAngle <= sec.endAngle
-      ) {
-        sectorGroup = new SectorGroup(sec);
-        sectorGroup.extract();
+    if (isSector) {
+      for (const sectorWheel of this.sectorWheels) {
+        const sectors = sectorWheel.sectors;
+        if (sectors.includes(location)) return sectorWheel;
       }
-    }
-
-    return sectorGroup;
-  }
-
-  getPrecedingSector(sector) {
-    const level = sector.wheel.level;
-    // if at innermost level
-    if (level === 0) return null;
-
-    for (const sec of this.sectors) {
-      if (
-        sec.wheel.level === level - 1 &&
-        sec.startAngle <= sector.startAngle &&
-        sector.endAngle <= sec.endAngle
-      )
-        return sec;
-    }
-  }
-
-  getSectorGroup(sector) {
-    const sectorGroup = new SectorGroup(sector);
-    sectorGroup.extract();
-    return sectorGroup;
-  }
-
-  // TODO: make new class for SectorWheel?
-  // TODO: optimize
-  getSectorWheel(location) {
-    const sectorWheel = {};
-    sectorWheel.sectors = [];
-    let sectors;
-
-    if (location instanceof Sector) sectors = location.wheel.sectors;
-    else {
-      // TODO: error handling
-      if (location < roulette.wheels.length)
-        sectors = roulette.wheels[location].sectors;
-      else return;
-    }
-
-    const startAngle = this.root.startAngle;
-    const endAngle = this.root.endAngle;
-
-    // case when sector is part of innermost wheel
-    if (location instanceof Sector && location.wheel.level === 0) {
-      sectorWheel.sectors = location.wheel.sectors;
-      sectorWheel.lowerIndex = 0;
-      sectorWheel.upperIndex = location.wheel.sectors.length - 1;
-      return sectorWheel;
-    } else if (location === 0) {
-      sectorWheel.sectors = roulette.wheels[location].sectors;
-      sectorWheel.lowerIndex = 0;
-      sectorWheel.upperIndex = location.wheel.sectors.length - 1;
-    }
-
-    for (let i = 0; i < sectors.length; i++) {
-      const sector = sectors[i];
-      if (startAngle <= sector.startAngle && sector.endAngle <= endAngle) {
-        sectorWheel.sectors.push(sector);
-        if (!sectorWheel.sectors.includes(sectors[i - 1]))
-          sectorWheel.lowerIndex = i;
-        if (i === sectors.length - 1) sectorWheel.upperIndex = i;
-      } else if (sectorWheel.sectors.includes(sectors[i - 1])) {
-        sectorWheel.upperIndex = i - 1;
-        break;
-      }
-    }
-    sectorWheel.count = sectorWheel.upperIndex - sectorWheel.lowerIndex + 1;
+    } else return this.sectorWheels[location];
 
     return sectorWheel;
   }
 
-  insert(sector) {
-    const sectorWheel = this.getSectorWheel(sector);
-
-    // fit new sector to sectorWheel
-    this.fit(sectorWheel, sector);
-  }
-
   push(sector) {
-    // only add if not a duplicate
+    // only add if DNE
     if (!this.contains(sector)) {
-      this.sectors.push(sector);
-      // set sectorGroup reference
-      sector.sectorGroup = this;
+      const groupLevel = sector.wheel.level - this.root.wheel.level;
+      if (!(groupLevel in this.sectorWheels))
+        this.sectorWheels[groupLevel] = new SectorWheel(this.root);
+
+      const sectorWheel = this.sectorWheels[groupLevel];
+      sectorWheel.push(sector);
+    } else {
+      // TODO: error handling
     }
   }
 
   remove(sector) {
-    const sectorWheel = this.getSectorWheel(sector);
-
-    // unfit sector from sectorWheel
-    this.unfit(sectorWheel, sector);
-  }
-
-  replace(sector, newArcAngle) {
-    const sectorGroup = sector.sectorGroup;
-
-    let sectors, angleRange;
-    if (this.root.wheel.level === 0) {
-      sectors = sector.wheel.sectors;
-      angleRange = 2 * Math.PI;
+    // only remove if exists
+    if (this.contains(sector)) {
+      const sectorWheel = this.getSectorWheel(sector, true);
+      sectorWheel.remove(sector, true);
     } else {
-      sectors = this.getSectorWheel(sector).sectors;
-      angleRange = this.root.arcAngle;
-    }
-
-    const remainingAngle = angleRange - newArcAngle;
-
-    let totalRatio = 0;
-    for (const sec of sectors) {
-      if (sec !== sector) totalRatio += sec.ratio;
-    }
-    const base = remainingAngle / totalRatio;
-
-    let index = 0;
-    let prevSector;
-    let currSector = sectors[index];
-
-    while (currSector) {
-      let arcAngle;
-      if (currSector === sector) arcAngle = newArcAngle;
-      else arcAngle = base * currSector.ratio;
-
-      const currSectorGroup = sectorGroup.getSectorGroup(currSector);
-
-      if (prevSector) currSector.startAngle = prevSector.endAngle;
-
-      currSector.endAngle = currSector.startAngle + arcAngle;
-      currSector.calculateProbability();
-      currSectorGroup.setRoot(currSector);
-
-      prevSector = currSector;
-      // increment index & get next sector
-      currSector = sectors[++index];
+      // TODO: error handling
     }
   }
 
-  setRoot(root) {
-    this.root = root;
-    // necessary?
-    // this.extract();
-    this.fill();
-  }
+  // replace(sector, newArcAngle) {
+  //   const sectorGroup = sector.sectorGroup;
 
-  unfit(sectorWheel, sector) {
-    let angleRange;
-    if (sector.wheel.level === 0) angleRange = 2 * Math.PI;
-    else angleRange = this.root.arcAngle;
+  //   let sectors, angleRange;
+  //   if (this.root.wheel.level === 0) {
+  //     sectors = sector.wheel.sectors;
+  //     angleRange = 2 * Math.PI;
+  //   } else {
+  //     sectors = this.getSectorWheel(sector, true).sectors;
+  //     angleRange = this.root.arcAngle;
+  //   }
 
-    const sectors = sectorWheel.sectors;
+  //   const remainingAngle = angleRange - newArcAngle;
 
-    // remove sector
-    const index = sectors.indexOf(sector);
-    sectors.splice(index, 1);
+  //   let totalRatio = 0;
+  //   for (const sec of sectors) {
+  //     if (sec !== sector) totalRatio += sec.ratio;
+  //   }
 
-    const handles = roulette.handles;
-    handles.splice(index, 1);
+  //   const base = remainingAngle / totalRatio;
 
-    // fit sectors into angleRange
-    let currAngle = sectors[0].startAngle;
-    for (const sector of sectors) {
-      const ratio = sector.ratio;
-      const arcAngle = (angleRange / sectors.length) * ratio;
+  //   let index = 0;
+  //   let prevSector;
+  //   let currSector = sectors[index];
 
-      sector.startAngle = currAngle;
-      sector.endAngle = currAngle + arcAngle;
-      sector.calculateProbability();
+  //   while (currSector) {
+  //     let arcAngle;
+  //     if (currSector === sector) arcAngle = newArcAngle;
+  //     else arcAngle = base * currSector.ratio;
 
-      currAngle = sector.endAngle;
-    }
+  //     const currSectorGroup = sectorGroup.getSectorGroup(currSector);
 
-    // update roulette sectors if not innermost wheel
-    if (sector.wheel.level !== 0) {
-      const rouletteSectors = sector.wheel.sectors;
-      rouletteSectors.splice(
-        sectorWheel.lowerIndex,
-        sectorWheel.count,
-        sectors
-      );
-    }
+  //     if (prevSector) currSector.startAngle = prevSector.endAngle;
+  //     currSector.endAngle = currSector.startAngle + arcAngle;
 
-    // update handles
-    for (const handle of roulette.handles) {
-      handle.updatePosition();
-    }
+  //     currSector.updateStatistics();
+  //     currSectorGroup.setRoot(currSector);
 
-    // re-render and update data
-    roulette.update();
-    data.update();
+  //     prevSector = currSector;
+  //     // increment index & get next sector
+  //     currSector = sectors[++index];
+  //   }
+  // }
+}
+
+function createSectorGroup(sector) {
+  let sectorGroup = new SectorGroup(sector);
+  sectorGroup.extract();
+  return sectorGroup;
+}
+
+// get sectorGroup whose root is the sector one level below input sector
+function getPrecedingGroup(sector) {
+  let precedingSector = getPrecedingSector(sector);
+
+  // at innermost wheel => precedingGroup DNE
+  if (precedingSector === null) return null;
+
+  return precedingSector.sectorGroup;
+}
+
+// get sector one level below input sector, containing input sector
+function getPrecedingSector(sector) {
+  const level = sector.wheel.level;
+
+  // if at innermost level
+  if (level === 0) return null;
+
+  const prevWheel = roulette.wheels[level - 1];
+  const prevSectors = prevWheel.sectors;
+
+  for (const sec of prevSectors) {
+    if (sec.startAngle <= sector.startAngle && sector.endAngle <= sec.endAngle)
+      return sec;
   }
 }
 
-export { SectorGroup };
+export {
+  SectorGroup,
+  createSectorGroup,
+  getPrecedingGroup,
+  getPrecedingSector,
+};

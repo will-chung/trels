@@ -61,4 +61,4 @@ function getAngle(x, y) {
   return angle;
 }
 
-export { getAngle };
+export { getAngle, VERTICAL_OFFSET };

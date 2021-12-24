@@ -11,9 +11,12 @@ addEventListener('mousedown', event => {
 
   handles.forEach(handle => {
     if (handle.contains(event.x, event.y)) {
-      // TODO: form sector group
       const sector = handle.sector;
       const adjacentSector = handle.adjacentSector;
+
+      const sectorGroup = handle.sectorGroup;
+      const adjacentSectorGroup = handle.adjacentSectorGroup;
+
       let prevAngle = getAngle(event.x, event.y);
 
       mouseMoveHandler = moveEvent => {
@@ -30,12 +33,15 @@ addEventListener('mousedown', event => {
 
         let trueAngle = sector.endAngle + difference;
 
-        let boundProps = handle.withinBounds(currAngle, trueAngle);
+        let boundProps = handle.withinBounds(trueAngle);
 
         if (boundProps.withinBounds) {
           sector.endAngle = boundProps.angle;
-
           adjacentSector.startAngle = sector.endAngle;
+
+          // TODO: optimize
+          if (sector.full) sector.full = false;
+          if (adjacentSector.full) adjacentSector.full = false;
         } else handle.setBounds(boundProps.boundType);
 
         prevAngle = currAngle;

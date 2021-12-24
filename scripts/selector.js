@@ -1,5 +1,5 @@
-import { setSize, setValue } from './region.js';
 import { roulette } from './roulette.js';
+import { setSize, setValue } from './region.js';
 
 addEventListener('mousedown', event => {
   const start = [event.x, event.y];
@@ -14,7 +14,9 @@ addEventListener('mousedown', event => {
           start[0] === end[0] &&
           start[1] === end[1]
         ) {
+          // clear selection
           roulette.reset();
+          // select new sector
           roulette.select(sector);
           setValue(sector.value);
           setSize(sector);
@@ -29,7 +31,7 @@ addEventListener('mousedown', event => {
 });
 
 /*
- * Double click to deselect sectors
+ * Double click to reset roulette
  **/
 // addEventListener('dblclick', event => {
 //   let contains = false;
