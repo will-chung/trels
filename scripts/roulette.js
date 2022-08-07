@@ -12,8 +12,9 @@ import './selector.js';
 const canvas = document.querySelector('canvas');
 const c = canvas.getContext('2d');
 
-let width = getCanvasDimensions(),
-  height = getCanvasDimensions();
+let width = getCanvasDimensions();
+let height = width;
+
 initializeCanvas(
   innerWidth / 2 - width / 2,
   innerHeight / 2 - height / 2,
@@ -679,16 +680,19 @@ function getCanvasDimensions() {
 }
 
 function initializeCanvas(x, y, width, height) {
+  canvas.x = x;
+  canvas.y = y;
   canvas.width = width;
   canvas.height = height;
   canvas.style.position = 'absolute';
   canvas.style.top = y + 'px';
   canvas.style.left = x + 'px';
-  canvas.x = x;
-  canvas.y = y;
 
   c.translate(canvas.width / 2, canvas.height / 2);
   c.transform(1, 0, 0, -1, 0, 0);
+
+  c.fillStyle = 'rgb(200, 0, 0)';
+  c.fillRect(0, -100, 100, 100);
 }
 
 function initializeRoulette() {
@@ -751,6 +755,6 @@ function clear() {
   );
 }
 
-initializeRoulette();
+// initializeRoulette();
 
 export { Roulette, initializeRoulette, clear, roulette, data, PRECISION };
